@@ -4,7 +4,6 @@ use std::{
     fs::File,
     io::Read,
     process::exit,
-    str::{self, Utf8Error},
     string::FromUtf8Error,
 };
 
@@ -109,6 +108,7 @@ pub fn get_switch_timing(
     Ok(result_df.clone())
 }
 fn fname_to_str(filename: &str) -> Result<String, FromUtf8Error> {
+    //!ファイル名からStringに変換する
     let mut file = File::open(filename).unwrap();
     let mut data = vec![];
     file.read_to_end(&mut data).unwrap();
@@ -154,6 +154,7 @@ pub fn variable_changer(
     variable_target_name: &str,
     ratio: f64,
 ) -> String {
+    //! マージンを調べる際に変数の値を変えてくれるやつです。
     let file_text = fname_to_str(filename).unwrap();
     let target_string = String::from(r"(?<value>[0-9]+)\s*?\w*?\s*?\s#!\s*?(?<label>.+)\s*?\n");
     let reg_string = target_string.replace("(?<label>.+)", variable_target_name);
@@ -188,7 +189,6 @@ pub fn variable_changer(
     let replace_number = target_number * ratio;
     let replace_str_tmp = replace_number.to_string();
     let replace_str = replace_str_tmp + " #! " + variable_target_name + " \n";
-    //valueの値だけを変更するにはどうすればいい？？
     let return_str = re.replace_all(&file_text, &replace_str);
     String::from(return_str)
 }
@@ -197,6 +197,7 @@ pub fn switch_timing_comparator(
     target_dataframe: DataFrame,
     config: MarginConfig,
 ) -> bool {
+    //! 元のデータと値を変えた場合とでスイッチするタイミングが同じなのか検証します。
     if default_dataframe.shape() == target_dataframe.shape() {
         let default_series = default_dataframe.get_columns();
         let target_series = target_dataframe.get_columns();
@@ -220,7 +221,7 @@ pub fn switch_timing_comparator(
 }
 #[cfg(test)]
 mod tests {
-    use polars::{export::rayon::result, prelude::*};
+    use polars::prelude::*;
     use regex::Regex;
     use std::{fs::File, io::Read, str};
 
