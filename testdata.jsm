@@ -298,7 +298,7 @@ V0                62         0  PWL(0ps 0mv 100ps 1mV)
 .print nodep 23|X_XOR 31|X_XOR
 .print nodep 46|X_XOR 39|X_XOR
 .print nodep 42|X_XOR 24|X_XOR
-.print nodep 43|X_XOR 45|X_XOR
+.plot nodep 43|X_XOR 45|X_XOR
 
 .end
 

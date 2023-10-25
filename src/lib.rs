@@ -32,9 +32,4 @@ mod tests {
         let result = get_switch_timing(&config,&dataframe, true);
         println!("{:?}",result);
     }
-    #[test]
-    fn val_change_test(){
-        let filename = "quicktest.jsm";
-
-    }
 }

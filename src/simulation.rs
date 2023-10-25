@@ -6,6 +6,8 @@ use std::io::Read;
 use std::io::{self, Write};
 use std::process::{Command, Stdio};
 use std::path::PathBuf;
+use regex::Regex;
+
 
 ///この関数はC++で作成されたjosim-cliを起動し、引数に入力された内容をjosim-cliに引き渡してその結果をpolarsライブラリで定義されているDataFrame変数に変換しreturnします。
 /// 入力する引数は.jsmファイルのフルパス、あるいは回路情報(netlist)のプレーンテキストです。
@@ -25,9 +27,9 @@ pub fn simulation(circuit_netlist: &str,delete_csv:bool) -> Result<polars::prelu
         vec![OsStr::new("-i")]
     };
     if circuit_netlist.ends_with(".jsm")==true {
-        println!("-o mode");
+        println!("filepath_input");
     } else {
-        println!("-i mode")
+        println!("stdin_input")
     }
     let process = match Command::new("josim-cli")
         .args(&arg_com)
@@ -58,7 +60,14 @@ pub fn simulation(circuit_netlist: &str,delete_csv:bool) -> Result<polars::prelu
             .has_header(true)
             .finish()?
     } else {
-        match process.stdin.unwrap().write_all(circuit_netlist.as_bytes()) {
+        //.fileがないか追跡する。あればファイル名を削除。そして出力ファイル名をtranの次の行に加筆する。これはファイル本体の文字列ではなくコピーした文字列だけ変わるので本体への影響は考えなくてもいい。
+        let find_re = Regex::new(r".file.+\n").unwrap();
+        let circuit_netlist_str = find_re.replace(circuit_netlist,"\n").to_string();
+        let re = Regex::new(r"(.tran.+\n)").unwrap();
+        let cap = re.captures(&circuit_netlist_str).unwrap().get(1).unwrap().as_str();
+        let replace = format!("{}.file {}\n",cap,output_fname);
+        let input_str = re.replace(&circuit_netlist_str, replace);
+        match process.stdin.unwrap().write_all(input_str.as_bytes()) {
             Err(why) => panic!("couldn't write to josim-cli stdin: {}", why),
             Ok(_) => print!(""),
         }
@@ -69,17 +78,7 @@ pub fn simulation(circuit_netlist: &str,delete_csv:bool) -> Result<polars::prelu
         let mut stderr = Vec::new();
         process.stderr.unwrap().read_to_end(&mut stderr)?;
 
-        // io::stderr().write_all(&stderr)?;
-
-        let stdout_str: std::borrow::Cow<'_, str> = String::from_utf8_lossy(&stdout);
-        let result: Vec<&str> = stdout_str.split("100% Formatting Output\n").collect();
-        // println!("{:?}", result);
-        let csv_data: &String = &result[1].replace(",", "->");
-        let csv_data: String = csv_data.replace("\n   ", "\n");
-        let csv_data: String = csv_data.replace("    ", " ");
-        let csv_data: String = csv_data.replace("   -", " -");
-        let csv_data: String = csv_data.replace(" ", ",");
-        CsvReader::new(io::Cursor::new(csv_data))
+        CsvReader::from_path(&output_fname)?
             .has_header(true)
             .finish()?
     };
@@ -93,4 +92,18 @@ pub fn simulation(circuit_netlist: &str,delete_csv:bool) -> Result<polars::prelu
         };
     }
     Ok(dataframe)
+}
+#[cfg(test)]
+mod tests {
+    use crate::simulation;
+    #[test]
+    fn file_input_test() {
+        let filename = "/home/nishizaki/myHFQenv/hfq_xor/hfq_xor4share.jsm";
+        print!("{:?}",simulation(filename,true));
+    }
+    #[test]
+    fn direct_input_test() {
+        let content =include_str!("/home/nishizaki/myHFQenv/hfq_xor/hfq_xor4share.jsm");
+        print!("{:?}",simulation(content,true));
+    }
 }

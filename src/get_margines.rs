@@ -1,15 +1,10 @@
 use polars::prelude::*;
 use regex::Regex;
-use std::{
-    fs::File,
-    io::Read,
-    process::exit,
-    string::FromUtf8Error,
-};
+use std::{fs::File, io::Read, process::exit, string::FromUtf8Error};
 
 /// このファイルでは各回路パーツを変動させた場合どこまで回路が予測通りに動作するのかを検証する関数をまとめています
 /// 動作の検証は位相が変化するタイミングをあらかじめ収集してそのあとに回路パラメーターを変動させて得た位相出力がオリジナルと相違ないか計算します
-/// 位相が変化するタイミングも自動で収集するコードが格納されています。そのコードの仕様がある程度わかっていないと理解しにくい関数かもしれません...
+/// 位相が変化するタイミングも自動で収集するコードが格納されています。そのコードの仕様がある程度わかっていないと理解しにくい関数かもしれません
 /// 回路パラメータは一つずつ変更して検証しますが、時短のために他の回路パラメータは初期値のまま固定されるので完全な最適化を行いたい場合はこのコードを根本的に書き換える必要があります。その場合かなり検証時間がかかり最悪計算機がタイムアウトする可能性があるので議論の余地があります。
 /// <使い方>
 /// マージンを調べたいパラメータの行の最後に#variant_nameを書くことで関数はこの変数名でパラメータを認識します。初期値についてはその行に書かれているコードに記載された数字をそのまま採用します。(そうすることで通常の検証をしなおしたい際にコードを書き換えずに済むのでpythonのバージョンとは仕様を変えました。)
@@ -22,30 +17,29 @@ pub struct MarginConfig {
     pub ref_data_start_time: f64, //最初に回路の値がどうなっているのか初期状態を取得する必要があります。これはその参考値を取得する開始時間です
     pub ref_data_end_time: f64,   //初期状態の参考値を取得する終了時間です。
     pub pulse_error: f64, //処理対象の回路についてスイッチするタイミングの誤差を指定するものです。緩すぎると明らかな異常状態を見逃すリスクが上がります。
-    // どの回路素子をこの関数が観察するか指定します。表記についてはjosimが出力する名前にあわせてください。(ex. P(number|number|...), V(number|...)など。)
-    pub ref_element_name: String,
 }
-pub fn set_margin_config(element_name: &str) -> MarginConfig {
-    let ref_data_start_time = 100e-12;
-    let ref_data_end_time = 450e-12;
-    let pulse_error = 150e-12;
-    let ref_element_name = element_name.to_string();
-    MarginConfig {
-        ref_data_start_time,
-        ref_data_end_time,
-        pulse_error,
-        ref_element_name,
+impl MarginConfig {
+    fn default(&self) -> MarginConfig {
+        let ref_data_start_time = 100e-12;
+        let ref_data_end_time = 450e-12;
+        let pulse_error = 150e-12;
+        MarginConfig {
+            ref_data_start_time,
+            ref_data_end_time,
+            pulse_error,
+        }
     }
 }
 pub fn get_switch_timing(
     config: &MarginConfig,
-    dataframe: &polars::prelude::DataFrame,
+    element_name :&str,
+    dataframe: &DataFrame,
     hfq: bool, //if false,it will be sfq
 ) -> Result<polars::prelude::DataFrame, PolarsError> {
     //! 指定されたインデックスのデータを読み取り、どのタイミングでスイッチしているのかを計算して判定する。その結果を新しいデータフレームで出力する
     let pi: f64 = 3.14159265358979323846264338327950288;
     let step_value = if hfq == true { pi } else { 2.0 * pi };
-    let uppercase_element_names = config.ref_element_name.clone();
+    let uppercase_element_names = String::from(element_name);
     let column_names = vec![String::from("time"), uppercase_element_names.clone()];
     let mask_starttime = dataframe
         .column("time")?
@@ -106,6 +100,13 @@ pub fn get_switch_timing(
         }
     }
     Ok(result_df.clone())
+}
+pub fn get_switch_timings(config: MarginConfig,element_names:Vec<&str>, df: DataFrame, hfq: bool) -> Vec<DataFrame> {
+    let mut return_vec: Vec<DataFrame> = Vec::new();
+    for element in element_names.iter() {
+        return_vec.push(get_switch_timing(&config,element, &df, hfq).unwrap());
+    }
+    return_vec
 }
 fn fname_to_str(filename: &str) -> Result<String, FromUtf8Error> {
     //!ファイル名からStringに変換する
@@ -193,11 +194,25 @@ pub fn variable_changer(
     String::from(return_str)
 }
 pub fn switch_timing_comparator(
-    default_dataframe: DataFrame,
-    target_dataframe: DataFrame,
-    config: MarginConfig,
+    default_dataframe: &DataFrame,
+    target_dataframe: &DataFrame,
+    config: &MarginConfig,
 ) -> bool {
     //! 元のデータと値を変えた場合とでスイッチするタイミングが同じなのか検証します。
+    //! どちらもget_switch_timingで処理してあるDFでないとうまく動きません(それをちゃんと検知するように作るべきだろうか...?)
+    //! shapeが2列でなければ検知しないように作るか、ベクトル制御にするか迷い中
+    //! とりあえずshapeで検知するようしにた。ベクトルはコンパクトになるけどスイッチタイミングも立派なデータなのでdataframeにしておくべきと判断。
+    //! スイッチタイミングがあっているかどうかは時間と位相の行をそれぞれ引き算して特定の値以内であれば排除、排除してデータフレームが空っぽになればOK,空っぽにならなくて値が残っていれば一致していない箇所があるとして出力
+    //!
+    //!
+    if !(default_dataframe.shape().1 == 22 && target_dataframe.shape().1 == 2) {
+        eprintln!(
+            "dataframe size error: default_dataframe {:?}, target_dataframe {:?}",
+            default_dataframe.shape(),
+            target_dataframe.shape()
+        );
+        exit(1)
+    }
     if default_dataframe.shape() == target_dataframe.shape() {
         let default_series = default_dataframe.get_columns();
         let target_series = target_dataframe.get_columns();
@@ -213,11 +228,51 @@ pub fn switch_timing_comparator(
             .gt(0.5)
             .unwrap()
             .is_empty();
-        if subtract_time == false && subtract_phase == false{
+        if subtract_time == false && subtract_phase == false {
             return true;
         };
     }
     return false;
+}
+pub fn switch_timing_comparator_all(
+    default_dfs: Vec<DataFrame>,
+    target_dfs: Vec<DataFrame>,
+    element_names:Vec<&str>,
+    config: MarginConfig,
+) -> bool {
+    //! 複数のデバイスで比較したいときにまとめて処理する関数。比較する素子をソートしなおしてから比較する関数"switch_timing_comparator"を呼び出す。
+    //! ベクトルのサイズは一致するかどうか検査するようにしていますが、一致しない名前のDataFrameがあったりMarginConfigがあっても検知できるように実装していないので想定外の動きをするかもしれません。
+    if default_dfs.len() != target_dfs.len() || default_dfs.len() != element_names.len() {
+        eprintln!(
+            "\x1b[1;31merror\x1b[0m: Vec size mismatch, default = {}, target = {}, config = {}",
+            default_dfs.len(),
+            target_dfs.len(),
+            element_names.len()
+        );
+        exit(1);
+    }
+    let mut sorted_default_dfs = default_dfs.clone();
+    sorted_default_dfs.sort_by_key(|item| {
+        let label = item.get_column_names()[1];
+        element_names.iter().position(|&x| x == label)
+    });
+    let mut sorted_target_dfs = target_dfs.clone();
+    sorted_target_dfs.sort_by_key(|item| {
+        let label = item.get_column_names()[1];
+        element_names.iter().position(|&x| x == label)
+    });
+    for i in 0..element_names.len() {
+        if !switch_timing_comparator(&sorted_default_dfs[i], &sorted_target_dfs[i], &config) {
+            return false;
+        }
+    }
+    return true;
+}
+pub fn get_margine(
+    default_df: &DataFrame,
+    configs: Vec<MarginConfig>,
+) -> Result<DataFrame, PolarsError> {
+    get_variables(filename, legacy)
 }
 #[cfg(test)]
 mod tests {
@@ -236,57 +291,6 @@ mod tests {
             "{:?}",
             get_switch_timing(&config, &simulation(filename, true).unwrap(), true)
         );
-    }
-    #[test]
-    fn test() {
-        let filename = "/home/nishizaki/hfq_rs/testdata.jsm";
-        let config = set_margin_config("P(49|X_SINK,48|X_SINK)");
-        println!(
-            "{:?}",
-            get_switch_timing(&config, &simulation(filename, true).unwrap(), true)
-        );
-        let variable_df = get_variables(filename, false).unwrap();
-        let ratio = 1.0;
-        let variable_target_name = "zero_in0";
-        let circuit_netlist = variable_changer(filename, variable_df, variable_target_name, ratio);
-        let dataframe = simulation(&circuit_netlist, true).unwrap();
-        println!("{:?}", dataframe);
-        let sw_timing_df = get_switch_timing(&config, &dataframe, true);
-        println!("{:?}", sw_timing_df);
-    }
-    #[test]
-    fn function_test() {
-        let mut file = File::open("/home/nishizaki/hfq_rs/testdata.jsm").unwrap();
-        let mut data = vec![];
-        file.read_to_end(&mut data).unwrap();
-        let file_text = str::from_utf8(&data).unwrap();
-        let re = Regex::new(r"(?<value>[0-9]+)\s#!\s*?(?<label>.+)\s*?\n").unwrap();
-        let default_data: Vec<(&str, f64)> = re
-            .captures_iter(file_text)
-            .map(|caps| {
-                let label = caps.name("label").unwrap().as_str();
-                let value = caps.name("value").unwrap().as_str().parse::<f64>().unwrap();
-                (label, value)
-            })
-            .collect();
-        let mut result_df = DataFrame::empty();
-        for v in default_data {
-            let tmp_df = df!("Element_name"=>&[v.0],"default_value"=>&[v.1]).unwrap();
-            result_df.vstack_mut(&tmp_df).unwrap();
-        }
-        result_df = result_df
-            .unique_stable(
-                Some(&[String::from("Element_name")]),
-                UniqueKeepStrategy::First,
-            )
-            .unwrap();
-        let result_num = result_df
-            .column("default_value")
-            .unwrap()
-            .str_value(0)
-            .parse::<f64>()
-            .unwrap();
-        println!("number is {:?}\n df is below {:?}", result_num, result_df);
     }
 }
 
