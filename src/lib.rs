@@ -1,7 +1,8 @@
+pub mod get_margines_util;
 pub mod simulation;
 pub mod get_margines;
 pub use simulation::*;
-pub use get_margines::*;
+pub use get_margines_util::*;
 
 /*
 構想：modで一つのnetlist関していろいろ操作ができるように関数間でデータを共有できるようにしておきたい
@@ -10,7 +11,7 @@ pub use get_margines::*;
 
 #[cfg(test)]
 mod tests {
-    use crate::{simulation, MarginConfig, get_switch_timing};
+    use crate::simulation;
     #[test]
     fn simulation_test() {
         let filename = "/home/nishizaki/myHFQenv/hfq_xor/hfq_xor4share.jsm";
@@ -19,17 +20,7 @@ mod tests {
         // テキストは\n{}です
         // println!("With text:\n{}", contents);
         // print!("{:?}",simulation(&contents));
-        print!("{:?}",simulation(filename,true));
+        print!("{:?}", simulation(filename, true));
     }
-    #[test]
-    fn function_test(){
-        let ref_data_start_time =100e-12;
-        let ref_data_end_time = 450e-12;
-        let pulse_error = 150e-12;
-        let ref_element_name = String::from("P(29|X_XOR,44|X_XOR)");
-        let config = MarginConfig {ref_data_start_time,ref_data_end_time,pulse_error,ref_element_name};
-        let dataframe = simulation("/home/nishizaki/myHFQenv/hfq_xor/hfq_xor4share.jsm",true).unwrap();
-        let result = get_switch_timing(&config,&dataframe, true);
-        println!("{:?}",result);
-    }
+ 
 }

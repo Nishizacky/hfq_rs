@@ -3,7 +3,7 @@ use polars::prelude::*;
 use std::ffi::OsStr;
 use std::fs;
 use std::io::Read;
-use std::io::{self, Write};
+use std::io::Write;
 use std::process::{Command, Stdio};
 use std::path::PathBuf;
 use regex::Regex;
