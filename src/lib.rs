@@ -20,7 +20,6 @@ mod tests {
         // テキストは\n{}です
         // println!("With text:\n{}", contents);
         // print!("{:?}",simulation(&contents));
-        print!("{:?}", simulation(filename, true));
+        print!("{:?}", simulation(filename));
     }
- 
 }

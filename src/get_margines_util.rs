@@ -1,6 +1,6 @@
 use polars::prelude::*;
 use regex::Regex;
-use std::{fs::File, io::Read, process::exit, string::FromUtf8Error};
+use std::{fs::File, io::Read, process::exit, string::FromUtf8Error, thread, sync::mpsc};
 
 use crate::simulation;
 
@@ -50,7 +50,7 @@ pub fn get_switch_timing(
     //! 指定されたインデックスのデータを読み取り、どのタイミングでスイッチしているのかを計算して判定する。その結果を新しいデータフレームで出力する
     let pi: f64 = 3.14159265358979323846264338327950288;
     let step_value = if hfq == true { pi } else { 2.0 * pi };
-    let uppercase_element_names = String::from(element_name);
+    let uppercase_element_names = String::from(element_name.to_uppercase());
     let column_names = vec![String::from("time"), uppercase_element_names.clone()];
     let mask_starttime = dataframe
         .column("time")?
@@ -121,13 +121,20 @@ pub fn get_switch_timings(
     //! judge_element_namesとマージンを求めたいtargetの素子名は別物なので区別をしよう。
     let mut return_vec: Vec<DataFrame> = Vec::new();
     for &element in judge_element_names.iter() {
-        return_vec.push(get_switch_timing(&config, element, &df, hfq).unwrap());
+        return_vec.push(
+            match get_switch_timing(&config, element, &df, hfq){
+                Ok(result) => result,
+                Err(why)=>panic!("switch timing error:\n{:?}",why)
+            });
     }
     return_vec
 }
 fn fname_to_str(filename: &str) -> Result<String, FromUtf8Error> {
     //!ファイル名からStringに変換する
-    let mut file = File::open(filename).unwrap();
+    let mut file = match File::open(filename){
+        Ok(result) => result,
+        Err(why)=>panic!("fname_to_str: {}",why)
+    };
     let mut data = vec![];
     file.read_to_end(&mut data).unwrap();
     let file_text = String::from_utf8(data);
@@ -136,7 +143,7 @@ fn fname_to_str(filename: &str) -> Result<String, FromUtf8Error> {
 pub fn get_variables(
     filename: &str,
     legacy: bool,
-) -> Result<polars::prelude::DataFrame, PolarsError> {
+) -> Result<DataFrame, PolarsError> {
     //! legacy: 昔(種村さん)の記法で解析します。falseならば新しい記法での解析を実行します。これはよほど暇じゃない限り実装しないかも。
     let file_text = fname_to_str(filename).unwrap();
     if legacy {
@@ -144,6 +151,8 @@ pub fn get_variables(
         exit(1);
     } else {
         let re = Regex::new(r"(?<value>[0-9]+)\s*?\w*?\s*?#!\s*?(?<label>.+)\s*?\n").unwrap();
+        //記法としては数字の後ろに#を入れて、そのあと変数名を入れると解析。
+        //ex:  20 #var_name
         let default_data: Vec<(&str, f64)> = re
             .captures_iter(file_text.as_str())
             .map(|caps| {
@@ -154,15 +163,13 @@ pub fn get_variables(
             .collect();
         let mut result_df = DataFrame::empty();
         for v in default_data {
-            let tmp_df = df!("Element_name"=>&[v.0],"default_value"=>&[v.1]).unwrap();
-            result_df.vstack_mut(&tmp_df).unwrap();
+            let tmp_df = df!("Element_name"=>&[v.0],"default_value"=>&[v.1])?;
+            result_df.vstack_mut(&tmp_df)?;
         }
-        result_df = result_df
-            .unique_stable(
-                Some(&[String::from("Element_name")]),
-                UniqueKeepStrategy::First,
-            )
-            .unwrap();
+        result_df = result_df.unique_stable(
+            Some(&[String::from("Element_name")]),
+            UniqueKeepStrategy::First,
+        )?;
         Ok(result_df)
     }
 }
@@ -174,8 +181,11 @@ pub fn variable_changer(
 ) -> String {
     //! マージンを調べる際に変数の値を変えてくれるやつです。
     let file_text = fname_to_str(filename).unwrap();
-    let target_string = String::from(r"(?<value>[0-9]+)\s*?\w*?\s*?\s#!\s*?(?<label>.+)\s*?\n");
-    let reg_string = target_string.replace("(?<label>.+)", variable_target_name);
+    let reg_string = format!(
+        r"(?<value>[0-9]+)\s*?\w*?\s*?#!\s*?{}\s*?\n",
+        String::from(variable_target_name)
+    )
+    .replace("\"", "");
     let re = Regex::new(&reg_string).unwrap();
     if !re.is_match(&file_text) {
         eprintln!(
@@ -196,14 +206,6 @@ pub fn variable_changer(
         );
         exit(1);
     }
-    // let target_number = variable_df
-    //     .filter(&mask)
-    //     .unwrap()
-    //     .column("default_value")
-    //     .unwrap()
-    //     .str_value(0)
-    //     .parse::<f64>()
-    //     .unwrap();
     let replace_str_tmp = replace_number.to_string();
     let replace_str = replace_str_tmp + " #! " + variable_target_name + " \n";
     let return_str = re.replace_all(&file_text, &replace_str);
@@ -219,9 +221,8 @@ pub fn switch_timing_comparator(
     //! shapeが2列でなければ検知しないように作るか、ベクトル制御にするか迷い中
     //! とりあえずshapeで検知するようしにた。ベクトルはコンパクトになるけどスイッチタイミングも立派なデータなのでdataframeにしておくべきと判断。
     //! スイッチタイミングがあっているかどうかは時間と位相の行をそれぞれ引き算して特定の値以内であれば排除、排除してデータフレームが空っぽになればOK,空っぽにならなくて値が残っていれば一致していない箇所があるとして出力
-    //!
-    //!
-    if !(default_dataframe.shape().1 == 22 && target_dataframe.shape().1 == 2) {
+
+    if !(default_dataframe.shape().1 == 2 && target_dataframe.shape().1 == 2) {
         eprintln!(
             "dataframe size error: default_dataframe {:?}, target_dataframe {:?}",
             default_dataframe.shape(),
@@ -232,15 +233,22 @@ pub fn switch_timing_comparator(
     if default_dataframe.shape() == target_dataframe.shape() {
         let default_series = default_dataframe.get_columns();
         let target_series = target_dataframe.get_columns();
-        let subtract_time = default_series[0]
+        
+        let subtract_time =match  default_series[0]
             .subtract(&target_series[0])
-            .unwrap()
+            {
+                Ok(ok)=>ok,
+                Err(why) =>panic!("{:?}",why)
+            }
             .gt(config.pulse_error)
             .unwrap()
             .is_empty();
-        let subtract_phase = default_series[1]
+        let subtract_phase = match default_series[1]
             .subtract(&target_series[1])
-            .unwrap()
+            {
+                Ok(ok)=> ok,
+                Err(why)=>panic!("{:?}",why)
+            }
             .gt(0.5)
             .unwrap()
             .is_empty();
@@ -295,7 +303,14 @@ pub fn judge(
     replace_number: f64,
 ) -> bool {
     let sim_string = variable_changer(filename, variable_df, element_name, replace_number);
-    let result_df = simulation(&sim_string, true).unwrap();
+    let result_df = simulation(&sim_string).unwrap();
+    //ここで-nanとなってるデータがあればこの時点でfalseを返すようにif文を作ること。
+    let dtypes = result_df.dtypes();
+    for dtype in dtypes {
+        if dtype != DataType::Float64 {
+            return false;
+        }
+    }
     let target_switch_timings = &get_switch_timings(config, judge_element_names, &result_df, hfq);
     switch_timing_comparator_all(
         sw_timing_dfs,
@@ -319,26 +334,16 @@ pub fn get_margine(
     //!マルチスレッドで生成される関数。
     //!
     if initial_value == 0.0 {
-        eprintln!("default_value==0.0");
-        exit(1);
+        panic!("default_value==0.0");
     }
-    let mut max = initial_value * 2.0;
-    let mut delta = 2.0;
-    // 変数が2倍してもシミュレーションが通ればそのまま終了。通らなかったら1/2をした値をシミュの結果に応じて足したり引いたりする。
-    if !judge(
-        filename,
-        sw_timing_dfs,
-        variable_df,
-        element_name,
-        config,
-        judge_element_names,
-        hfq,
-        max,
-    ) {
-        max -= initial_value / delta;
-        delta /= 2.0;
-        for _i in 0..rep {
-            if judge(
+    let (tx_max,rx_max) = mpsc::channel();
+    let (tx_min,rx_min) = mpsc::channel();
+    thread::scope(|scope| {
+        let handle_max = scope.spawn(|| {
+            let mut max = initial_value * 2.0;
+            let mut delta = 2.0;
+            // 変数が2倍してもシミュレーションが通ればそのまま終了。通らなかったら1/2をした値をシミュの結果に応じて足したり引いたりする。
+            if !judge(
                 filename,
                 sw_timing_dfs,
                 variable_df,
@@ -348,29 +353,33 @@ pub fn get_margine(
                 hfq,
                 max,
             ) {
-                max += initial_value / delta
-            } else {
-                max -= initial_value / delta
+                max -= initial_value / delta;
+                delta *= 2.0;
+                for _i in 0..rep {
+                    if judge(
+                        filename,
+                        sw_timing_dfs,
+                        variable_df,
+                        element_name,
+                        config,
+                        judge_element_names,
+                        hfq,
+                        max,
+                    ) {
+                        max += initial_value / delta
+                    } else {
+                        max -= initial_value / delta
+                    }
+                    delta *= 2.0;
+                    // println!("{},max{}",i,max);
+                }
             }
-            delta /= 2.0;
-        }
-    }
-    let mut min = initial_value / 2.0;
-    delta = 2.0;
-    if !judge(
-        filename,
-        sw_timing_dfs,
-        variable_df,
-        element_name,
-        config,
-        judge_element_names,
-        hfq,
-        min,
-    ) {
-        min -= initial_value / delta;
-        delta /= 2.0;
-        for _i in 0..rep {
-            if judge(
+            tx_max.send(max).unwrap();
+        });
+        let handle_min = scope.spawn(|| {
+            let mut min = initial_value / 2.0;
+            let mut delta = 2.0;
+            if !judge(
                 filename,
                 sw_timing_dfs,
                 variable_df,
@@ -380,37 +389,39 @@ pub fn get_margine(
                 hfq,
                 min,
             ) {
-                min -= initial_value / delta
-            } else {
-                min += initial_value / delta
-            }
-            delta /= 2.0;
-        }
-    }
+                min += initial_value / delta;
+                delta *= 2.0;
+                for _i in 0..rep {
+                    if judge(
+                        filename,
+                        sw_timing_dfs,
+                        variable_df,
+                        element_name,
+                        config,
+                        judge_element_names,
+                        hfq,
+                        min,
+                    ) {
+                        min -= initial_value / delta
+                    } else {
+                        min += initial_value / delta
+                    }
+                    delta *= 2.0;
+                    // println!("{},min{}",i,min);
+                }
+            };
+            tx_min.send(min).unwrap();
+        });
+        let _ = match handle_max.join(){
+            Ok(_)=> print!(""),
+            Err(why) => panic!("max finding error: {:?}",why)
+        };
+        let _ = match handle_min.join(){
+            Ok(_)=>print!(""),
+            Err(why)=>panic!("min finding error: {:?}",why)
+        };
+    });
+    let max = rx_max.recv().unwrap();
+    let min = rx_min.recv().unwrap();
     return (max, min);
-}
-pub fn get_margine_arc(
-    filename: Arc<&str>,
-    default_df: Arc<&DataFrame>,
-    sw_timing_dfs: Arc<&Vec<DataFrame>>,
-    variable_df: Arc<&DataFrame>,
-    initial_value: Arc<f64>,
-    element_name: Arc<&str>,
-    config: Arc<&MarginConfig>,
-    judge_element_names: Arc<&Vec<&str>>,
-    hfq: Arc<bool>,
-    rep: Arc<usize>,
-) -> (f64, f64){
-    get_margine(
-        *filename,
-        *default_df,
-        *sw_timing_dfs,
-        *variable_df,
-        *initial_value,
-        *element_name,
-        *config,
-        *judge_element_names,
-        *hfq,
-        *rep,
-    )
 }
