@@ -163,7 +163,7 @@ fn raw_to_filestream(input: String) -> std::io::Cursor<Vec<u8>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{simulation, simulation_with_csvfile};
+    use crate::modules::simulation::{simulation,simulation_with_csvfile};
     #[test]
     fn file_input_test() {
         let filename = "/home/nishizaki/myHFQenv/hfq_xor/hfq_xor4share.jsm";

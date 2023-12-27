@@ -1,5 +1,4 @@
-use crate::get_margines_util::*;
-use crate::simulation;
+use crate::modules::*;
 use polars::prelude::*;
 use std::sync::mpsc;
 use std::thread;
@@ -74,8 +73,7 @@ pub fn get_margines(
 }
 #[cfg(test)]
 mod tests {
-    use crate::get_margines::get_margines;
-    use crate::MarginConfig;
+    use crate::modules::*;
     #[test]
     fn get_margine_test() {
         let filename = "/home/nishizaki/hfq_rs/part3.jsm";

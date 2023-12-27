@@ -2,7 +2,7 @@ use polars::prelude::*;
 use regex::Regex;
 use std::{fs::File, io::Read, process::exit, string::FromUtf8Error, thread, sync::mpsc};
 
-use crate::simulation;
+use crate::modules::simulation::*;
 
 /// このファイルでは各回路パーツを変動させた場合どこまで回路が予測通りに動作するのかを検証する関数をまとめています
 /// 動作の検証は位相が変化するタイミングをあらかじめ収集してそのあとに回路パラメーターを変動させて得た位相出力がオリジナルと相違ないか計算します

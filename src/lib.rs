@@ -1,8 +1,4 @@
-pub mod get_margines_util;
-pub mod simulation;
-pub mod get_margines;
-pub use simulation::*;
-pub use get_margines_util::*;
+pub mod modules;
 
 /*
 構想：modで一つのnetlist関していろいろ操作ができるように関数間でデータを共有できるようにしておきたい
@@ -11,15 +7,19 @@ pub use get_margines_util::*;
 
 #[cfg(test)]
 mod tests {
-    use crate::simulation;
+    use crate::modules::*;
     #[test]
     fn simulation_test() {
         let filename = "/home/nishizaki/myHFQenv/hfq_xor/hfq_xor4share.jsm";
-        // --snip--
-        // let contents = fs::read_to_string(&filename).unwrap();
-        // テキストは\n{}です
-        // println!("With text:\n{}", contents);
-        // print!("{:?}",simulation(&contents));
         print!("{:?}", simulation(filename));
+    }
+    #[test]
+    fn margine_check_test(){
+        let filename = "/home/nishizaki/hfq_rs/part3.jsm";
+    let config = MarginConfig::new();
+    println!(
+        "{:?}",
+        get_margines(filename, vec!["P(49|X_sink,48|X_sink)"], config, true, 8)
+    );
     }
 }
