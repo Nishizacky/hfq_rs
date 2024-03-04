@@ -7,10 +7,11 @@ edition = "2021"
 
 [dependencies]
 polars = { version = "0.25.1", features = ["lazy"] }
-chrono = {version="0.4.30"}
+chrono = "0.4.30"
 regex = "1.10.0"
 rand = "0.8.5"
 tokio = "1.35.0"
+plotters="0.3.3"
 
 [lib]
 name = "hfq_rs"

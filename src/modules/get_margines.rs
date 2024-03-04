@@ -69,7 +69,6 @@ pub fn get_margines(
         }
     }
     result_dataframe
-    /*なんでマルチスレッドの値がうまく返ってこない？？ */
 }
 #[cfg(test)]
 mod tests {
