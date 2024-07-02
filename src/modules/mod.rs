@@ -6,4 +6,3 @@ pub mod plotter;
 pub use simulation::*;
 pub use get_margines::*;
 pub use get_margines_util::*;
-pub use plotter::*;
