@@ -16,3 +16,4 @@ plotters="0.3.3"
 [lib]
 name = "hfq_rs"
 crate-type = ["rlib","dylib"]
+path = "src/lib.rs"
