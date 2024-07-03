@@ -150,9 +150,9 @@ pub fn get_variables(
         eprintln!("This function haven't been coded yet, sorry!");
         exit(1);
     } else {
-        let re = Regex::new(r"(?<value>[0-9]+)\s*?\w*?\s*?#!\s*?(?<label>.+)\s*?\n").unwrap();
-        //記法としては数字の後ろに#を入れて、そのあと変数名を入れると解析。
-        //ex:  20 #var_name
+        let re = Regex::new(r"(?<value>[\d.]+)\w*?\s*?#!(?<label>.+)\s*?\n").unwrap();
+        //記法としては数字の後ろに#!を入れて、そのあと変数名を入れると解析
+        //ex:  .param bias=20 #!var_name
         let default_data: Vec<(&str, f64)> = re
             .captures_iter(file_text.as_str())
             .map(|caps| {
@@ -182,7 +182,7 @@ pub fn variable_changer(
     //! マージンを調べる際に変数の値を変えてくれるやつです。
     let file_text = fname_to_str(filename).unwrap();
     let reg_string = format!(
-        r"(?<value>[0-9]+)\s*?\w*?\s*?#!\s*?{}\s*?\n",
+        r"(?<value>[\d.]+)\s*?\w*?\s*?#!\s*?{}\s*?\n",
         String::from(variable_target_name)
     )
     .replace("\"", "");

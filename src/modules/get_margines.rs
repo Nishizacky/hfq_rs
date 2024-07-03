@@ -1,7 +1,9 @@
 use crate::modules::*;
+use indicatif::{ProgressBar, ProgressStyle};
 use polars::prelude::*;
 use std::sync::mpsc;
 use std::thread;
+
 pub fn get_margines(
     filename: &str,
     default_element_names: Vec<&str>,
@@ -14,6 +16,11 @@ pub fn get_margines(
     //!
     let default_dataframe = simulation(filename).unwrap();
     let target_variables = get_variables(filename, false).unwrap();
+    let pb = ProgressBar::new(target_variables.height().try_into().unwrap());
+    pb.set_style(ProgressStyle::default_bar()
+        .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta}) \n {msg}")
+        .unwrap()
+        .progress_chars("#>-"));
     let target_variable_names = target_variables.column("Element_name").unwrap();
     let target_var_init_values = target_variables.column("default_value").unwrap();
     let sw_timings = get_switch_timings(
@@ -55,16 +62,17 @@ pub fn get_margines(
             });
             handles.push(handle);
         }
-        for handle in handles {   
-            let _ = match handle.join(){
-                Ok(_)=>print!(""),
-                Err(why)=>panic!("{:?}",why)
+        for handle in handles {
+            let _ = match handle.join() {
+                Ok(_) => print!(""),
+                Err(why) => panic!("{:?}", why),
             };
         }
     });
     for recieved in rx {
         result_dataframe.vstack_mut(&recieved).unwrap().rechunk();
-        if result_dataframe.shape().0 == target_variables.shape().0{
+        pb.inc(1);
+        if result_dataframe.shape().0 == target_variables.shape().0 {
             break;
         }
     }
@@ -83,5 +91,3 @@ mod tests {
         );
     }
 }
-
-

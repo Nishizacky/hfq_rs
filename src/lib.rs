@@ -15,11 +15,29 @@ mod tests {
     }
     #[test]
     fn margine_check_test(){
-        let filename = "/home/nishizaki/hfq_rs/part3.jsm";
+        let filename = "/home/nishizaki/hfq_rs/tests/part3.jsm";
     let config = MarginConfig::new();
     println!(
         "{:?}",
         get_margines(filename, vec!["P(49|X_sink,48|X_sink)"], config, true, 8)
+    );
+    }
+    #[test]
+    fn and(){
+        let filename = "/home/nishizaki/hfq_rs/tests/and.jsm";
+    let config = MarginConfig::new();
+    println!(
+        "{:?}",
+        get_margines(filename, vec![""], config, true, 8)
+    );
+    }
+    #[test]
+    fn xor(){
+        let filename = "/home/nishizaki/hfq_rs/tests/xor.jsm";
+    let config = MarginConfig::new();
+    println!(
+        "{:?}",
+        get_margines(filename, vec!["P(3|X5|X34)","P(3|X5|X44)","P(3|X5|X54)","P(3|X5|X71)"], config, true, 8)
     );
     }
 }
