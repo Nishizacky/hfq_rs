@@ -34,7 +34,6 @@ pub fn get_margines(
     let (tx, rx) = mpsc::channel();
     
     let arc_m = Arc::new(m);
-    println!("hi");
     thread::scope(|scope| {
         let mut handles = vec![];
         for (init_value, tar_name) in target_var_init_values
