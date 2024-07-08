@@ -18,6 +18,3 @@ indicatif = "0.17.8"
 name = "hfq_rs"
 crate-type = ["rlib","dylib"]
 path = "src/lib.rs"
-
-[profile.dev]
-debug = true
