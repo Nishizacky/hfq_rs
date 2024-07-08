@@ -5,6 +5,7 @@ use std::{fs::File, io::Read, process::exit, string::FromUtf8Error, sync::mpsc, 
 
 use crate::modules::simulation::*;
 
+use super::{MarginConfig, PI_RATIO};
 /// このファイルでは各回路パーツを変動させた場合どこまで回路が予測通りに動作するのかを検証する関数をまとめています
 /// 動作の検証は位相が変化するタイミングをあらかじめ収集してそのあとに回路パラメーターを変動させて得た位相出力がオリジナルと相違ないか計算します
 /// 位相が変化するタイミングも自動で収集するコードが格納されています。そのコードの仕様がある程度わかっていないと理解しにくい関数かもしれません
@@ -14,34 +15,7 @@ use crate::modules::simulation::*;
 /// 同じ変数名が複数回登場する場合、初期値は一番最初に登場したものが採用されるため注意してください。
 /// include機能についてはjosimに走らせたときにはじめて回収されます。この関数はjosimの起動前に処理を行う関数ですがinclude先のファイルを検査しないのでincludeで指示しているファイルは変数指定できません。注意してください。
 
-pub struct MarginConfig {
-    //素子名だけで組んでくれるマクロを作成しておくこと。
-    // ここではシミュレーションの中で検査する時間帯や、誤差をどれだけ許容するかを指定します。
-    pub ref_data_start_time: f64, //最初に回路の値がどうなっているのか初期状態を取得する必要があります。これはその参考値を取得する開始時間です
-    pub ref_data_end_time: f64,   //初期状態の参考値を取得する終了時間です。
-    pub pulse_error: f64, //処理対象の回路についてスイッチするタイミングの誤差を指定するものです。緩すぎると明らかな異常状態を見逃すリスクが上がります。
-}
-impl MarginConfig {
-    pub fn new() -> MarginConfig {
-        let ref_data_start_time = 100e-12;
-        let ref_data_end_time = 450e-12;
-        let pulse_error = 150e-12;
-        MarginConfig {
-            ref_data_start_time,
-            ref_data_end_time,
-            pulse_error,
-        }
-    }
-}
-impl Clone for MarginConfig {
-    fn clone(&self) -> Self {
-        MarginConfig {
-            ref_data_start_time: self.ref_data_start_time,
-            ref_data_end_time: self.ref_data_end_time,
-            pulse_error: self.pulse_error,
-        }
-    }
-}
+
 pub fn get_switch_timing(
     config: &MarginConfig,
     element_name: &str,
@@ -50,7 +24,8 @@ pub fn get_switch_timing(
 ) -> Result<DataFrame, PolarsError> {
     //! 指定されたインデックスのデータを読み取り、どのタイミングでスイッチしているのかを計算して判定する。その結果を新しいデータフレームで出力する
     let pi: f64 = 3.14159265358979323846264338327950288;
-    let step_value = if hfq == true { pi } else { 2.0 * pi };
+    let phase = if hfq == true { pi } else { 2.0 * pi };
+    let step_value = phase*PI_RATIO;
     let uppercase_element_names = String::from(element_name.to_uppercase());
     let column_names = vec![String::from("time"), uppercase_element_names.clone()];
     let mask_starttime = dataframe
@@ -207,7 +182,7 @@ pub fn variable_changer(
         return "".to_string();
     };
     let replace_str_tmp = replace_number.to_string();
-    let replace_str = replace_str_tmp + &caps["prefix"] + " #!" + variable_target_name  + " \n";
+    let replace_str = replace_str_tmp + &caps["prefix"] + " #!" + variable_target_name + " \n";
     let return_str = re.replace_all(&file_text, &replace_str);
     String::from(return_str)
 }
@@ -450,42 +425,35 @@ pub fn get_margine_with_progress_bar(
     thread::scope(|scope| {
         let handle_max = scope.spawn(|| {
             let mut max = initial_value * 2.0;
-            let mut delta = 2.0;
+            let mut limit_flag = false;
+            let mut delta = 4.0;
             // 変数が2倍してもシミュレーションが通ればそのまま終了。通らなかったら1/2をした値をシミュの結果に応じて足したり引いたりする。
             let pb = m.add(ProgressBar::new(rep.try_into().unwrap()));
             pb.set_style(pbar_style.clone());
             pb.set_message(format!("finding max {}", element_name));
-            if !judge(
-                filename,
-                sw_timing_dfs,
-                variable_df,
-                element_name,
-                config,
-                judge_element_names,
-                hfq,
-                max,
-            ) {
-                max -= initial_value / delta;
-                delta *= 2.0;
-                for _ in 0..rep {
-                    if judge(
-                        filename,
-                        sw_timing_dfs,
-                        variable_df,
-                        element_name,
-                        config,
-                        judge_element_names,
-                        hfq,
-                        max,
-                    ) {
-                        max += initial_value / delta
+            for _ in 0..rep {
+                if judge(
+                    filename,
+                    sw_timing_dfs,
+                    variable_df,
+                    element_name,
+                    config,
+                    judge_element_names,
+                    hfq,
+                    max,
+                ) {
+                    if limit_flag == true {
+                        max += initial_value / delta;
                     } else {
-                        max -= initial_value / delta
+                        max *= 2.0;
                     }
-                    delta *= 2.0;
-                    pb.inc(1);
-                    // println!("{},max{}",i,max);
+                } else {
+                    limit_flag = true;
+                    max -= initial_value / delta
                 }
+                delta *= 2.0;
+                pb.inc(1);
+                pb.set_message(format!("{},max{}", element_name, max));
             }
             pb.finish_and_clear();
             tx_max.send(max).unwrap();
@@ -495,38 +463,31 @@ pub fn get_margine_with_progress_bar(
             pb.set_style(pbar_style.clone());
             pb.set_message(format!("finding min {}", element_name));
             let mut min = initial_value / 2.0;
-            let mut delta = 2.0;
-            if !judge(
-                filename,
-                sw_timing_dfs,
-                variable_df,
-                element_name,
-                config,
-                judge_element_names,
-                hfq,
-                min,
-            ) {
-                min += initial_value / delta;
-                delta *= 2.0;
-                for _ in 0..rep {
-                    if judge(
-                        filename,
-                        sw_timing_dfs,
-                        variable_df,
-                        element_name,
-                        config,
-                        judge_element_names,
-                        hfq,
-                        min,
-                    ) {
-                        min -= initial_value / delta
+            let mut delta = 4.0;
+            let mut limit_flag = false;
+            for _ in 0..rep {
+                if judge(
+                    filename,
+                    sw_timing_dfs,
+                    variable_df,
+                    element_name,
+                    config,
+                    judge_element_names,
+                    hfq,
+                    min,
+                ) {
+                    if limit_flag == true {
+                        min -= initial_value / delta;
                     } else {
-                        min += initial_value / delta
+                        min /= 2.0;
                     }
-                    delta *= 2.0;
-                    pb.inc(1);
-                    // println!("{},min{}",i,min);
+                } else {
+                    limit_flag = true;
+                    min += initial_value / delta
                 }
+                delta *= 2.0;
+                pb.inc(1);
+                pb.set_message(format!("{},min{}", element_name, min));
             }
             pb.finish_and_clear();
             tx_min.send(min).unwrap();
