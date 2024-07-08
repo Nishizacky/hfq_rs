@@ -1,7 +1,7 @@
 use crate::modules::*;
-use indicatif::{ProgressBar, ProgressStyle};
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use polars::prelude::*;
-use std::sync::mpsc;
+use std::sync::{mpsc,Arc};
 use std::thread;
 
 pub fn get_margines(
@@ -16,9 +16,10 @@ pub fn get_margines(
     //!
     let default_dataframe = simulation(filename).unwrap();
     let target_variables = get_variables(filename, false).unwrap();
-    let pb = ProgressBar::new(target_variables.height().try_into().unwrap());
+    let m = MultiProgress::new();
+    let pb = m.add(ProgressBar::new((target_variables.height()*2).try_into().unwrap()));
     pb.set_style(ProgressStyle::default_bar()
-        .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta}) \n {msg}")
+        .template("[{elapsed_precise}][{bar:40.cyan/blue}] {pos}/{len} main thread {msg}")
         .unwrap()
         .progress_chars("#>-"));
     let target_variable_names = target_variables.column("Element_name").unwrap();
@@ -31,15 +32,18 @@ pub fn get_margines(
     );
     let mut result_dataframe = DataFrame::empty();
     let (tx, rx) = mpsc::channel();
-
+    
+    let arc_m = Arc::new(m);
+    println!("hi");
     thread::scope(|scope| {
         let mut handles = vec![];
         for (init_value, tar_name) in target_var_init_values
             .iter()
             .zip(target_variable_names.iter())
         {
+            let m = arc_m.clone();
             let handle = scope.spawn(|| {
-                let (max, min) = get_margine(
+                let (max, min) = get_margine_with_progress_bar(
                     filename,
                     &default_dataframe,
                     &sw_timings,
@@ -50,6 +54,7 @@ pub fn get_margines(
                     &default_element_names,
                     hfq,
                     rep,
+                    m
                 );
                 let df_tmp = match
                 df!("Device_name"=>&[tar_name],"init"=>&[init_value],"min"=>&[min],"MAX"=>&[max]){
@@ -58,6 +63,7 @@ pub fn get_margines(
                         panic!("df_tmp error\n{:?}",error)
                     },
                 };
+                pb.inc(1);
                 tx.send(df_tmp).unwrap();
             });
             handles.push(handle);
@@ -69,13 +75,14 @@ pub fn get_margines(
             };
         }
     });
+    
     for recieved in rx {
         result_dataframe.vstack_mut(&recieved).unwrap().rechunk();
-        pb.inc(1);
         if result_dataframe.shape().0 == target_variables.shape().0 {
             break;
         }
     }
+    pb.finish_with_message("done!");
     result_dataframe
 }
 #[cfg(test)]
