@@ -13,7 +13,7 @@ hfqco: josimで動作するように作成した回路ファイルを解析し�
  - 値を変更しても正常に動作するのかスイッチするタイミングで判定する関数
    - 注: これらは単一の素子にしか動作しないので複数の回路素子をまたいで検証したい場合にそなえて別途関数を作成します。
  - ファイル全体を通してマージンを計測する関数
- - API->こちらのレポジトリを利用してください
+ - API->[こちら](https://github.com/Nishizacky/hfqco)のレポジトリを利用してください
 ### 作業中
 なし 
 ### 未着手
@@ -37,7 +37,7 @@ hfqco is a library designed to analyze circuit files created for josim and ident
  - Functions to determine if the circuit operates normally by checking the switching timing, even after changing the values.
    - Note: These functions currently work only on single elements, and separate functions will be created to verify across multiple circuit elements.
  - Functions to measure margins throughout the entire file.
- - API: Please use this repository for API.
+ - API: Please use [this](https://github.com/Nishizacky/hfqco) repository for API.
 
 ### In Progress
  - None
