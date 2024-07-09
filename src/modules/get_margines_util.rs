@@ -424,37 +424,43 @@ pub fn get_margine_with_progress_bar(
     thread::scope(|scope| {
         let handle_max = scope.spawn(|| {
             let mut max = initial_value * 2.0;
-            let mut limit_flag = false;
-            let mut delta = 4.0;
+            let mut delta = initial_value / 2.0;
             // 変数が2倍してもシミュレーションが通ればそのまま終了。通らなかったら1/2をした値をシミュの結果に応じて足したり引いたりする。
             let pb = m.add(ProgressBar::new(rep.try_into().unwrap()));
             pb.set_style(pbar_style.clone());
             pb.set_message(format!("finding max {}", element_name));
-            for _ in 0..rep {
-                if judge(
-                    filename,
-                    sw_timing_dfs,
-                    variable_df,
-                    element_name,
-                    config,
-                    judge_element_names,
-                    hfq,
-                    max,
-                ) {
-                    if limit_flag == true {
-                        max += initial_value / delta;
+            if judge(
+                filename,
+                sw_timing_dfs,
+                variable_df,
+                element_name,
+                config,
+                judge_element_names,
+                hfq,
+                max,
+            ) {
+            } else {
+                max -= delta;
+                delta/=2.0;
+                for _ in 0..rep-1 {
+                    if judge(
+                        filename,
+                        sw_timing_dfs,
+                        variable_df,
+                        element_name,
+                        config,
+                        judge_element_names,
+                        hfq,
+                        max,
+                    ) {
+                        max += delta;
                     } else {
-                        max *= 2.0;
+                        max-=delta;
                     }
-                } else {
-                    limit_flag = true;
-                    max -= initial_value / delta
+                    delta /=2.0;
+                    pb.inc(1);
+                    pb.set_message(format!("{},max{}", element_name, max));
                 }
-                if limit_flag == true {
-                    delta *= 2.0;
-                }
-                pb.inc(1);
-                pb.set_message(format!("{},max{}", element_name, max));
             }
             pb.finish_and_clear();
             tx_max.send(max).unwrap();
@@ -464,8 +470,7 @@ pub fn get_margine_with_progress_bar(
             pb.set_style(pbar_style.clone());
             pb.set_message(format!("finding min {}", element_name));
             let mut min = initial_value / 2.0;
-            let mut delta = 4.0;
-            let mut limit_flag = false;
+            let mut delta = initial_value / 4.0;
             for _ in 0..rep {
                 if judge(
                     filename,
@@ -477,18 +482,11 @@ pub fn get_margine_with_progress_bar(
                     hfq,
                     min,
                 ) {
-                    if limit_flag == true {
-                        min -= initial_value / delta;
-                    } else {
-                        min /= 2.0;
-                    }
+                    min -= delta;
                 } else {
-                    limit_flag = true;
-                    min += initial_value / delta
+                    min += delta;
                 }
-                if limit_flag == true {
-                    delta *= 2.0;
-                }
+                delta /= 2.0;
                 pb.inc(1);
                 pb.set_message(format!("{},min{}", element_name, min));
             }
