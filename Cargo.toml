@@ -1,6 +1,6 @@
 [package]
 name = "hfq_rs"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Nishizacky"]
 edition = "2021"
 license = "MIT"
@@ -10,7 +10,4 @@ description = "optimized for multithreading and enhanced performance using Polar
 polars = { version = "0.25.1", features = ["lazy"] }
 chrono = "0.4.30"
 regex = "1.10.0"
-rand = "0.8.5"
-tokio = "1.35.0"
-plotters="0.3.3"
 indicatif = "0.17.8"

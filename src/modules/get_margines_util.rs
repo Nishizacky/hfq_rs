@@ -15,7 +15,6 @@ use super::{MarginConfig, PI_RATIO};
 /// 同じ変数名が複数回登場する場合、初期値は一番最初に登場したものが採用されるため注意してください。
 /// include機能についてはjosimに走らせたときにはじめて回収されます。この関数はjosimの起動前に処理を行う関数ですがinclude先のファイルを検査しないのでincludeで指示しているファイルは変数指定できません。注意してください。
 
-
 pub fn get_switch_timing(
     config: &MarginConfig,
     element_name: &str,
@@ -25,7 +24,7 @@ pub fn get_switch_timing(
     //! 指定されたインデックスのデータを読み取り、どのタイミングでスイッチしているのかを計算して判定する。その結果を新しいデータフレームで出力する
     let pi: f64 = 3.14159265358979323846264338327950288;
     let phase = if hfq == true { pi } else { 2.0 * pi };
-    let step_value = phase*PI_RATIO;
+    let step_value = phase * PI_RATIO;
     let uppercase_element_names = String::from(element_name.to_uppercase());
     let column_names = vec![String::from("time"), uppercase_element_names.clone()];
     let mask_starttime = dataframe
@@ -451,7 +450,9 @@ pub fn get_margine_with_progress_bar(
                     limit_flag = true;
                     max -= initial_value / delta
                 }
-                delta *= 2.0;
+                if limit_flag == true {
+                    delta *= 2.0;
+                }
                 pb.inc(1);
                 pb.set_message(format!("{},max{}", element_name, max));
             }
@@ -485,7 +486,9 @@ pub fn get_margine_with_progress_bar(
                     limit_flag = true;
                     min += initial_value / delta
                 }
-                delta *= 2.0;
+                if limit_flag == true {
+                    delta *= 2.0;
+                }
                 pb.inc(1);
                 pb.set_message(format!("{},min{}", element_name, min));
             }
