@@ -14,8 +14,3 @@ rand = "0.8.5"
 tokio = "1.35.0"
 plotters="0.3.3"
 indicatif = "0.17.8"
-
-[lib]
-name = "hfq_rs"
-crate-type = ["rlib","dylib"]
-path = "src/lib.rs"
