@@ -160,18 +160,3 @@ fn raw_to_filestream(input: String) -> std::io::Cursor<Vec<u8>> {
     cursor.write_all(content_bytes).unwrap();
     cursor
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::modules::simulation::{simulation,simulation_with_csvfile};
-    #[test]
-    fn file_input_test() {
-        let filename = "/home/nishizaki/myHFQenv/hfq_xor/hfq_xor4share.jsm";
-        print!("{:?}", simulation_with_csvfile(filename,true));
-    }
-    #[test]
-    fn direct_input_test() {
-        let content = include_str!("/home/nishizaki/myHFQenv/hfq_xor/hfq_xor4share.jsm");
-        print!("{:?}", simulation(content));
-    }
-}
