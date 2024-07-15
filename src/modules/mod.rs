@@ -7,7 +7,7 @@ pub use simulation::*;
 pub use get_margines::*;
 pub use get_margines_util::*;
 
-pub const PI_RATIO: f64 = 0.75;
+pub const PI_RATIO: f64 = 0.9;
 
 pub struct MarginConfig {
     //素子名だけで組んでくれるマクロを作成しておくこと。
@@ -18,7 +18,7 @@ pub struct MarginConfig {
 }
 impl MarginConfig {
     pub fn new() -> MarginConfig {
-        let ref_data_start_time = 100e-12;
+        let ref_data_start_time = 200e-12;
         let ref_data_end_time = 450e-12;
         let pulse_error = 150e-12;
         MarginConfig {

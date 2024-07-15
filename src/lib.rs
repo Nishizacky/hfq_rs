@@ -30,16 +30,16 @@ mod tests {
     let config = MarginConfig::new();
     println!(
         "{:?}",
-        get_margines(filename, vec!["P(3|X5|X34)","P(3|X5|X44)","P(3|X5|X54)","P(3|X5|X72)"], config, true, 8)
+        get_margines(filename, vec!["P(3|X5|X34)","P(3|X5|X44)","P(3|X5|X54)","P(3|X5|X72)"], config, true, 1)
     );
     }
     #[test]
     fn xor(){
-        let filename = "/home/nishizaki/hfq_rs/tests/xor.jsm";
+        let filename = "/home/nishizaki/hfq_rs/tests/xor2.jsm";
     let config = MarginConfig::new();
     println!(
         "{:?}",
-        get_margines(filename, vec!["P(3|X5|X34)","P(3|X5|X44)","P(3|X5|X54)","P(3|X5|X71)"], config, true, 8)
+        get_margines(filename, vec!["P(73)"], config, true, 8)
     );
     }
 }

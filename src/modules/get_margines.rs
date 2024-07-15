@@ -28,8 +28,9 @@ pub fn get_margines(
         &configs,
         &default_element_names,
         &default_dataframe.clone(),
-        true,
+        hfq,
     );
+    println!("sw_default {:?}",sw_timings);
     let mut result_dataframe = DataFrame::empty();
     let (tx, rx) = mpsc::channel();
     
@@ -83,17 +84,4 @@ pub fn get_margines(
     }
     pb.finish_with_message("done!");
     result_dataframe
-}
-#[cfg(test)]
-mod tests {
-    use crate::modules::*;
-    #[test]
-    fn get_margine_test() {
-        let filename = "/home/nishizaki/hfq_rs/part3.jsm";
-        let config = MarginConfig::new();
-        println!(
-            "{:?}",
-            get_margines(filename, vec!["P(49|X_sink,48|X_sink)"], config, true, 8)
-        );
-    }
 }

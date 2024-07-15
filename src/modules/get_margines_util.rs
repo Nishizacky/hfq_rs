@@ -192,7 +192,6 @@ pub fn switch_timing_comparator(
 ) -> bool {
     //! 元のデータと値を変えた場合とでスイッチするタイミングが同じなのか検証します。
     //! どちらもget_switch_timingで処理してあるDFでないとうまく動きません(それをちゃんと検知するように作るべきだろうか...?)
-    //! shapeが2列でなければ検知しないように作るか、ベクトル制御にするか迷い中
     //! とりあえずshapeで検知するようしにた。ベクトルはコンパクトになるけどスイッチタイミングも立派なデータなのでdataframeにしておくべきと判断。
     //! スイッチタイミングがあっているかどうかは時間と位相の行をそれぞれ引き算して特定の値以内であれば排除、排除してデータフレームが空っぽになればOK,空っぽにならなくて値が残っていれば一致していない箇所があるとして出力
 
@@ -205,26 +204,36 @@ pub fn switch_timing_comparator(
         exit(1)
     }
     if default_dataframe.shape() == target_dataframe.shape() {
+        println!("default {:?}",default_dataframe);
+        println!("target {:?}",target_dataframe);
         let default_series = default_dataframe.get_columns();
         let target_series = target_dataframe.get_columns();
-
-        let subtract_time = match default_series[0].subtract(&target_series[0]) {
-            Ok(ok) => ok,
-            Err(why) => panic!("{:?}", why),
-        }
-        .gt(config.pulse_error)
-        .unwrap()
-        .is_empty();
-        let subtract_phase = match default_series[1].subtract(&target_series[1]) {
-            Ok(ok) => ok,
-            Err(why) => panic!("{:?}", why),
-        }
-        .gt(0.5)
-        .unwrap()
-        .is_empty();
-        if subtract_time == false && subtract_phase == false {
+        let timing_sub = &default_series[0] - &target_series[0];
+        let timing_sub_over = timing_sub
+            .filter(&timing_sub.gt(config.pulse_error).expect("p1"))
+            .unwrap()
+            .len()
+            == 0;
+        let timing_sub_under = timing_sub
+            .filter(&timing_sub.lt(-config.pulse_error).expect("p2"))
+            .unwrap()
+            .len()
+            == 0;
+        let phase_sub = &default_series[1] - &target_series[1];
+        let phase_sub_over = phase_sub
+            .filter(&phase_sub.gt(0.5).expect("p3"))
+            .unwrap()
+            .len()
+            == 0;
+        let phase_sub_under = phase_sub
+            .filter(&phase_sub.lt(-0.5).expect("p4"))
+            .unwrap()
+            .len()
+            == 0;
+        if timing_sub_over&timing_sub_under&phase_sub_over&phase_sub_under==true {
             return true;
         };
+        exit(1);
     }
     return false;
 }
@@ -289,112 +298,6 @@ pub fn judge(
         config,
     )
 }
-pub fn get_margine(
-    filename: &str,
-    _default_df: &DataFrame,
-    sw_timing_dfs: &Vec<DataFrame>,
-    variable_df: &DataFrame,
-    initial_value: f64,
-    element_name: &str,
-    config: &MarginConfig,
-    judge_element_names: &Vec<&str>,
-    hfq: bool,
-    rep: usize,
-) -> (f64, f64) {
-    //!マルチスレッドで生成される関数。
-    //!
-    if initial_value == 0.0 {
-        panic!("default_value==0.0");
-    }
-    let (tx_max, rx_max) = mpsc::channel();
-    let (tx_min, rx_min) = mpsc::channel();
-    thread::scope(|scope| {
-        let handle_max = scope.spawn(|| {
-            let mut max = initial_value * 2.0;
-            let mut delta = 2.0;
-            // 変数が2倍してもシミュレーションが通ればそのまま終了。通らなかったら1/2をした値をシミュの結果に応じて足したり引いたりする。
-            if !judge(
-                filename,
-                sw_timing_dfs,
-                variable_df,
-                element_name,
-                config,
-                judge_element_names,
-                hfq,
-                max,
-            ) {
-                max -= initial_value / delta;
-                delta *= 2.0;
-                for _ in 0..rep {
-                    if judge(
-                        filename,
-                        sw_timing_dfs,
-                        variable_df,
-                        element_name,
-                        config,
-                        judge_element_names,
-                        hfq,
-                        max,
-                    ) {
-                        max += initial_value / delta
-                    } else {
-                        max -= initial_value / delta
-                    }
-                    delta *= 2.0;
-                    // println!("{},max{}",i,max);
-                }
-            }
-            tx_max.send(max).unwrap();
-        });
-        let handle_min = scope.spawn(|| {
-            let mut min = initial_value / 2.0;
-            let mut delta = 2.0;
-            if !judge(
-                filename,
-                sw_timing_dfs,
-                variable_df,
-                element_name,
-                config,
-                judge_element_names,
-                hfq,
-                min,
-            ) {
-                min += initial_value / delta;
-                delta *= 2.0;
-                for _ in 0..rep {
-                    if judge(
-                        filename,
-                        sw_timing_dfs,
-                        variable_df,
-                        element_name,
-                        config,
-                        judge_element_names,
-                        hfq,
-                        min,
-                    ) {
-                        min -= initial_value / delta
-                    } else {
-                        min += initial_value / delta
-                    }
-                    delta *= 2.0;
-                    // println!("{},min{}",i,min);
-                }
-            }
-            tx_min.send(min).unwrap();
-        });
-        let _ = match handle_max.join() {
-            Ok(_) => print!(""),
-            Err(why) => panic!("max finding error: {:?}", why),
-        };
-        let _ = match handle_min.join() {
-            Ok(_) => print!(""),
-            Err(why) => panic!("min finding error: {:?}", why),
-        };
-    });
-    let max = rx_max.recv().unwrap();
-    let min = rx_min.recv().unwrap();
-    return (max, min);
-}
 
 pub fn get_margine_with_progress_bar(
     filename: &str,
@@ -429,6 +332,7 @@ pub fn get_margine_with_progress_bar(
             let pb = m.add(ProgressBar::new(rep.try_into().unwrap()));
             pb.set_style(pbar_style.clone());
             pb.set_message(format!("finding max {}", element_name));
+            let mut log: Vec<&str> = vec![];
             if judge(
                 filename,
                 sw_timing_dfs,
@@ -441,8 +345,8 @@ pub fn get_margine_with_progress_bar(
             ) {
             } else {
                 max -= delta;
-                delta/=2.0;
-                for _ in 0..rep-1 {
+                delta /= 2.0;
+                for _ in 0..rep - 1 {
                     if judge(
                         filename,
                         sw_timing_dfs,
@@ -454,15 +358,17 @@ pub fn get_margine_with_progress_bar(
                         max,
                     ) {
                         max += delta;
+                        log.push("+");
                     } else {
-                        max-=delta;
+                        max -= delta;
+                        log.push("-");
                     }
-                    delta /=2.0;
+                    delta /= 2.0;
                     pb.inc(1);
                     pb.set_message(format!("{},max{}", element_name, max));
                 }
             }
-            pb.finish_and_clear();
+            pb.finish_with_message(format!("{} max: {:?}", element_name, log));
             tx_max.send(max).unwrap();
         });
         let handle_min = scope.spawn(|| {
@@ -471,6 +377,7 @@ pub fn get_margine_with_progress_bar(
             pb.set_message(format!("finding min {}", element_name));
             let mut min = initial_value / 2.0;
             let mut delta = initial_value / 4.0;
+            let mut log: Vec<&str> = vec![];
             for _ in 0..rep {
                 if judge(
                     filename,
@@ -483,14 +390,16 @@ pub fn get_margine_with_progress_bar(
                     min,
                 ) {
                     min -= delta;
+                    log.push("-");
                 } else {
                     min += delta;
+                    log.push("+");
                 }
                 delta /= 2.0;
                 pb.inc(1);
                 pb.set_message(format!("{},min{}", element_name, min));
             }
-            pb.finish_and_clear();
+            pb.finish_with_message(format!("{} min: {:?}", element_name, log));
             tx_min.send(min).unwrap();
         });
         let _ = match handle_max.join() {
