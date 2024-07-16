@@ -15,7 +15,10 @@ use std::{
 /// .jsmのファイルはjosim-cliつまりこのrustがサブプロセスを実行する対象のターミナルからアクセスできる必要があります。
 /// 総ステップ数が100000を超えるとタイムアウトする可能性があります。これはjosimの仕様です。netlistを書き換えましょう。
 /// もしcsvやrawで出力されるファイルが欲しい場合この関数を書き換える必要があります。(今のところ)
-pub fn simulation_with_csvfile(circuit_netlist: &str, delete_csv: bool) -> Result<DataFrame, PolarsError> {
+pub fn simulation_with_csvfile(
+    circuit_netlist: &str,
+    delete_csv: bool,
+) -> Result<DataFrame, PolarsError> {
     let output_fname = Local::now()
         .format("/tmp/hfq_rs/simresult_%Y_%b%d_%H:%M:%S.csv")
         .to_string();
@@ -83,8 +86,10 @@ pub fn simulation_with_csvfile(circuit_netlist: &str, delete_csv: bool) -> Resul
         process.stderr.unwrap().read_to_end(&mut stderr)?;
     };
     // let dataframe = read_csv_file(output_fname);
-    let dataframe = CsvReader::from_path(&output_fname)?
-        .has_header(true)
+    let dataframe = CsvReadOptions::default()
+        .with_has_header(true)
+        .try_into_reader_with_file_path(Some((&output_fname).into()))
+        .unwrap()
         .finish()?;
     if delete_csv {
         let delete_file_path_buf = PathBuf::from(&output_fname);
@@ -105,14 +110,15 @@ pub fn simulation(circuit_netlist: &str) -> Result<DataFrame, PolarsError> {
         vec![OsStr::new("-i")]
     };
     let mut input = String::new();
-    if circuit_netlist.ends_with(".jsm"){
+    if circuit_netlist.ends_with(".jsm") {
         let mut f = File::open(circuit_netlist).expect("file not found");
-        f.read_to_string(&mut input).expect("something went wrong reading the file ");
-    }else{
+        f.read_to_string(&mut input)
+            .expect("something went wrong reading the file ");
+    } else {
         input = circuit_netlist.to_string();
     }
     let re = Regex::new(r"#!.+\n").unwrap();
-    let input = re.replace_all(&input,"\n");
+    let input = re.replace_all(&input, "\n");
     let process = match Command::new("josim-cli")
         .args(&arg_com)
         .stdin(Stdio::piped())
@@ -127,7 +133,7 @@ pub fn simulation(circuit_netlist: &str) -> Result<DataFrame, PolarsError> {
         Err(why) => panic!("couldn't write to josim-cli stdin: {}", why),
         Ok(_) => print!(""),
     }
-    
+
     let mut stdout = Vec::new();
     process.stdout.unwrap().read_to_end(&mut stdout)?;
 
@@ -135,12 +141,15 @@ pub fn simulation(circuit_netlist: &str) -> Result<DataFrame, PolarsError> {
     process.stderr.unwrap().read_to_end(&mut stderr)?;
 
     let stdout_str = String::from_utf8(stdout).unwrap();
-    if !stdout_str.contains("100% Formatting Output\n"){
-        panic!("{}\n\n Matrix is singular. Matrix will have no solution.
-        Please check the components in the netlist. ",input);
+    if !stdout_str.contains("100% Formatting Output\n") {
+        panic!(
+            "{}\n\n Matrix is singular. Matrix will have no solution.
+        Please check the components in the netlist. ",
+            input
+        );
     }
     let filestream = raw_to_filestream(stdout_str);
-    CsvReader::new(filestream).has_header(true).finish()
+    CsvReader::new(filestream).finish()
 }
 
 fn raw_to_filestream(input: String) -> std::io::Cursor<Vec<u8>> {
@@ -153,7 +162,7 @@ fn raw_to_filestream(input: String) -> std::io::Cursor<Vec<u8>> {
     let re = Regex::new(r" +").unwrap();
     let return_str = re.replace_all(&return_str, ",");
     // println!("{:?}",return_str);
-    
+
     // Cursor を使用してバッファを持つファイルストリームを作成
     let content_bytes = return_str.as_bytes();
     let mut cursor = Cursor::new(Vec::new());

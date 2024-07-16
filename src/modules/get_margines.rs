@@ -1,7 +1,7 @@
 use crate::modules::*;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use polars::prelude::*;
-use std::sync::{mpsc,Arc};
+use std::sync::{mpsc, Arc};
 use std::thread;
 
 pub fn get_margines(
@@ -17,11 +17,15 @@ pub fn get_margines(
     let default_dataframe = simulation(filename).unwrap();
     let target_variables = get_variables(filename, false).unwrap();
     let m = MultiProgress::new();
-    let pb = m.add(ProgressBar::new((target_variables.height()*2).try_into().unwrap()));
-    pb.set_style(ProgressStyle::default_bar()
-        .template("[{elapsed_precise}][{bar:40.cyan/blue}] {pos}/{len} main thread {msg}")
-        .unwrap()
-        .progress_chars("#>-"));
+    let pb = m.add(ProgressBar::new(
+        (target_variables.height() * 2).try_into().unwrap(),
+    ));
+    pb.set_style(
+        ProgressStyle::default_bar()
+            .template("[{elapsed_precise}][{bar:40.cyan/blue}] {pos}/{len} main thread {msg}")
+            .unwrap()
+            .progress_chars("#>-"),
+    );
     let target_variable_names = target_variables.column("Element_name").unwrap();
     let target_var_init_values = target_variables.column("default_value").unwrap();
     let sw_timings = get_switch_timings(
@@ -30,10 +34,9 @@ pub fn get_margines(
         &default_dataframe.clone(),
         hfq,
     );
-    println!("sw_default {:?}",sw_timings);
     let mut result_dataframe = DataFrame::empty();
     let (tx, rx) = mpsc::channel();
-    
+
     let arc_m = Arc::new(m);
     thread::scope(|scope| {
         let mut handles = vec![];
@@ -75,13 +78,41 @@ pub fn get_margines(
             };
         }
     });
-    
+
     for recieved in rx {
-        result_dataframe.vstack_mut(&recieved).unwrap().rechunk();
-        if result_dataframe.shape().0 == target_variables.shape().0 {
+        result_dataframe
+            .vstack_mut(&recieved)
+            .unwrap()
+            .should_rechunk();
+        if result_dataframe.height() == target_variables.height() {
             break;
         }
     }
+    let min_par = ((&(&(result_dataframe.column("min").unwrap()
+        - result_dataframe.column("init").unwrap())
+    .unwrap()
+        / (result_dataframe.column("init").unwrap()))
+    .unwrap())
+        * 100.0)
+        .rename("min%")
+        .rechunk();
+    let max_par = ((&(&(result_dataframe.column("MAX").unwrap()
+        - result_dataframe.column("init").unwrap())
+    .unwrap()
+        / result_dataframe.column("init").unwrap())
+    .unwrap())
+        * 100.0)
+        .rename("MAX%")
+        .rechunk();
+    let average = (&((result_dataframe.column("min").unwrap()
+        + result_dataframe.column("MAX").unwrap())
+    .unwrap())
+        / 2)
+    .rename("avg")
+    .rechunk();
+    result_dataframe.with_column(min_par).unwrap();
+    result_dataframe.with_column(max_par).unwrap();
+    result_dataframe.with_column(average).unwrap();
     pb.finish_with_message("done!");
     result_dataframe
 }

@@ -10,13 +10,13 @@ mod tests {
     use crate::modules::*;
     #[test]
     fn simulation_test() {
-        let filename = "/home/nishizaki/myHFQenv/hfq_xor/hfq_xor4share.jsm";
+        let filename = "tests/xor.jsm";
         print!("{:?}", simulation(filename));
     }
 
     #[test]
     fn margine_check_test(){
-        let filename = "/home/nishizaki/hfq_rs/tests/part3.jsm";
+        let filename = "tests/part3.jsm";
     let config = MarginConfig::new();
     println!(
         "{:?}",
@@ -26,7 +26,7 @@ mod tests {
 
     #[test]
     fn and(){
-        let filename = "/home/nishizaki/hfq_rs/tests/and2.jsm";
+        let filename = "tests/and2.jsm";
     let config = MarginConfig::new();
     println!(
         "{:?}",
@@ -35,11 +35,11 @@ mod tests {
     }
     #[test]
     fn xor(){
-        let filename = "/home/nishizaki/hfq_rs/tests/xor2.jsm";
+        let filename = "tests/xor_tane.jsm";
     let config = MarginConfig::new();
     println!(
         "{:?}",
-        get_margines(filename, vec!["P(73)"], config, true, 8)
+        get_margines(filename, vec!["P(3|X5|X34)","P(3|X5|X44)","P(3|X5|X54)","P(3|X5|X71)"], config, true, 8)
     );
     }
 }

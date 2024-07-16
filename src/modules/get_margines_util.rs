@@ -140,6 +140,7 @@ pub fn get_variables(filename: &str, legacy: bool) -> Result<DataFrame, PolarsEr
         result_df = result_df.unique_stable(
             Some(&[String::from("Element_name")]),
             UniqueKeepStrategy::First,
+            None,
         )?;
         Ok(result_df)
     }
@@ -153,7 +154,7 @@ pub fn variable_changer(
     //! マージンを調べる際に変数の値を変えてくれるやつです。
     let file_text = fname_to_str(filename).unwrap();
     let reg_string = format!(
-        r"(?<value>[\d.]+)(?<prefix>\w?)\s*?\w*?\s*?#!\s*?{}\s*?\n",
+        r"(?<divider>[=\s]+)(?<value>[\d.]+)(?<prefix>\w?)\w*?\s*?#!\s*?{}\s*?\n",
         String::from(variable_target_name)
     )
     .replace("\"", "");
@@ -181,7 +182,10 @@ pub fn variable_changer(
         return "".to_string();
     };
     let replace_str_tmp = replace_number.to_string();
-    let replace_str = replace_str_tmp + &caps["prefix"] + " #!" + variable_target_name + " \n";
+    let divider = caps["divider"].to_string();
+    let prefix = caps["prefix"].to_string();
+    let replace_str =
+        format!("{}{}{} #!{} \n",divider,replace_str_tmp,prefix,variable_target_name);
     let return_str = re.replace_all(&file_text, &replace_str);
     String::from(return_str)
 }
@@ -204,36 +208,41 @@ pub fn switch_timing_comparator(
         exit(1)
     }
     if default_dataframe.shape() == target_dataframe.shape() {
-        println!("default {:?}",default_dataframe);
-        println!("target {:?}",target_dataframe);
-        let default_series = default_dataframe.get_columns();
-        let target_series = target_dataframe.get_columns();
-        let timing_sub = &default_series[0] - &target_series[0];
-        let timing_sub_over = timing_sub
-            .filter(&timing_sub.gt(config.pulse_error).expect("p1"))
+        let default_df_names = default_dataframe.get_column_names();
+        let target_df_names = target_dataframe.get_column_names();
+        let time_series = Series::new(
+            "time",
+            (default_dataframe.column(default_df_names[0]).unwrap()
+                - target_dataframe.column(target_df_names[0]).unwrap())
+            .unwrap(),
+        );
+        let phase_series = Series::new(
+            "phase",
+            (default_dataframe.column(default_df_names[1]).unwrap()
+                - target_dataframe.column(target_df_names[1]).unwrap())
+            .unwrap(),
+        );
+        let sub_df = DataFrame::new(vec![time_series, phase_series]).expect("sub_df error");
+        let time_mask = sub_df
+            .column("time")
             .unwrap()
-            .len()
-            == 0;
-        let timing_sub_under = timing_sub
-            .filter(&timing_sub.lt(-config.pulse_error).expect("p2"))
+            .gt(config.pulse_error)
+            .unwrap();
+        let timing_sub_over = sub_df.filter(&time_mask).unwrap().height() == 0;
+        let time_mask = sub_df
+            .column("time")
             .unwrap()
-            .len()
-            == 0;
-        let phase_sub = &default_series[1] - &target_series[1];
-        let phase_sub_over = phase_sub
-            .filter(&phase_sub.gt(0.5).expect("p3"))
-            .unwrap()
-            .len()
-            == 0;
-        let phase_sub_under = phase_sub
-            .filter(&phase_sub.lt(-0.5).expect("p4"))
-            .unwrap()
-            .len()
-            == 0;
-        if timing_sub_over&timing_sub_under&phase_sub_over&phase_sub_under==true {
+            .lt(-config.pulse_error)
+            .unwrap();
+        let timing_sub_under = sub_df.filter(&time_mask).unwrap().height() == 0;
+        let phase_mask = sub_df.column("phase").unwrap().gt(0.5).unwrap();
+        let phase_sub_over = sub_df.filter(&phase_mask).unwrap().height() == 0;
+        let phase_mask = sub_df.column("phase").unwrap().lt(-0.5).unwrap();
+        let phase_sub_under = sub_df.filter(&phase_mask).unwrap().height() == 0;
+
+        if timing_sub_over & timing_sub_under & phase_sub_over & phase_sub_under == true {
             return true;
         };
-        exit(1);
     }
     return false;
 }
@@ -365,10 +374,9 @@ pub fn get_margine_with_progress_bar(
                     }
                     delta /= 2.0;
                     pb.inc(1);
-                    pb.set_message(format!("{},max{}", element_name, max));
                 }
             }
-            pb.finish_with_message(format!("{} max: {:?}", element_name, log));
+            pb.finish_and_clear();
             tx_max.send(max).unwrap();
         });
         let handle_min = scope.spawn(|| {
@@ -397,9 +405,8 @@ pub fn get_margine_with_progress_bar(
                 }
                 delta /= 2.0;
                 pb.inc(1);
-                pb.set_message(format!("{},min{}", element_name, min));
             }
-            pb.finish_with_message(format!("{} min: {:?}", element_name, log));
+            pb.finish_and_clear();
             tx_min.send(min).unwrap();
         });
         let _ = match handle_max.join() {

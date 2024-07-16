@@ -7,7 +7,7 @@ license = "MIT"
 description = "optimized for multithreading and enhanced performance using Polars for dataframe operations, designed to analyze circuit files for josim and determine the operating margins of specified circuit elements."
 
 [dependencies]
-polars = { version = "0.25.1", features = ["lazy"] }
-chrono = "0.4.30"
 regex = "1.10.0"
 indicatif = "0.17.8"
+polars = "0.41.3"
+chrono = "0.4.38"
