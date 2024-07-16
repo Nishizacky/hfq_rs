@@ -1,9 +1,9 @@
 use crate::modules::*;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use polars::prelude::*;
+use std::env;
 use std::sync::{mpsc, Arc};
 use std::thread;
-
 pub fn get_margines(
     filename: &str,
     default_element_names: Vec<&str>,
@@ -18,7 +18,7 @@ pub fn get_margines(
     let target_variables = get_variables(filename, false).unwrap();
     let m = MultiProgress::new();
     let pb = m.add(ProgressBar::new(
-        (target_variables.height() * 2).try_into().unwrap(),
+        (target_variables.height()).try_into().unwrap(),
     ));
     pb.set_style(
         ProgressStyle::default_bar()
@@ -110,9 +110,23 @@ pub fn get_margines(
         / 2)
     .rename("avg")
     .rechunk();
+    result_dataframe.with_column(average).unwrap();
     result_dataframe.with_column(min_par).unwrap();
     result_dataframe.with_column(max_par).unwrap();
-    result_dataframe.with_column(average).unwrap();
+
+    let range = (result_dataframe.column("MAX%").unwrap()
+        - result_dataframe.column("min%").unwrap())
+    .unwrap()
+    .rename("range%")
+    .rechunk();
+    result_dataframe.with_column(range).unwrap();
+    result_dataframe = result_dataframe
+        .sort(
+            ["range%"],
+            SortMultipleOptions::new().with_order_descending(true),
+        )
+        .unwrap();
     pb.finish_with_message("done!");
+    env::set_var("POLARS_FMT_MAX_ROWS", result_dataframe.height().to_string());
     result_dataframe
 }

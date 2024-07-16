@@ -15,31 +15,44 @@ mod tests {
     }
 
     #[test]
-    fn margine_check_test(){
+    fn margine_check_test() {
         let filename = "tests/part3.jsm";
-    let config = MarginConfig::new();
-    println!(
-        "{:?}",
-        get_margines(filename, vec!["P(49|X_sink,48|X_sink)"], config, true, 12)
-    );
+        let config = MarginConfig::new();
+        println!(
+            "{:?}",
+            get_margines(filename, vec!["P(49|X_sink,48|X_sink)"], config, true, 12)
+        );
     }
 
     #[test]
-    fn and(){
+    fn and() {
         let filename = "tests/and2.jsm";
-    let config = MarginConfig::new();
-    println!(
-        "{:?}",
-        get_margines(filename, vec!["P(3|X5|X34)","P(3|X5|X44)","P(3|X5|X54)","P(3|X5|X72)"], config, true, 1)
-    );
+        let config = MarginConfig::new();
+        println!(
+            "{:?}",
+            get_margines(
+                filename,
+                vec!["P(3|X5|X34)", "P(3|X5|X44)", "P(3|X5|X54)", "P(3|X5|X72)"],
+                config,
+                true,
+                1
+            )
+        );
     }
     #[test]
-    fn xor(){
+    fn xor() {
         let filename = "tests/xor_tane.jsm";
-    let config = MarginConfig::new();
-    println!(
-        "{:?}",
-        get_margines(filename, vec!["P(3|X5|X34)","P(3|X5|X44)","P(3|X5|X54)","P(3|X5|X71)"], config, true, 8)
-    );
+        let config = MarginConfig::new();
+        println!(
+            "{}",
+            get_margines(
+                filename,
+                vec!["P(3|X5|X34)", "P(3|X5|X44)", "P(3|X5|X54)", "P(3|X5|X71)"],
+                config,
+                true,
+                8
+            )
+            .to_string()
+        );
     }
 }
