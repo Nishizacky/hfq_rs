@@ -4,3 +4,4 @@
 *.jsm
 josim_resultCSV
 tests
+.vscode
