@@ -6,7 +6,7 @@ edition = "2021"
 license = "MIT"
 description = "optimized for multithreading and enhanced performance using Polars for dataframe operations, designed to analyze circuit files for josim and determine the operating margins of specified circuit elements."
 readme = "README.md"
-
+exclude = [".vscode"]
 [dependencies]
 regex = "1.10.0"
 indicatif = "0.17.8"
