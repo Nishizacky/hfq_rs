@@ -15,7 +15,7 @@ use super::{MarginConfig, PI_RATIO};
 /// 同じ変数名が複数回登場する場合、初期値は一番最初に登場したものが採用されるため注意してください。
 /// include機能についてはjosimに走らせたときにはじめて回収されます。この関数はjosimの起動前に処理を行う関数ですがinclude先のファイルを検査しないのでincludeで指示しているファイルは変数指定できません。注意してください。
 
-pub fn get_switch_timing(
+fn get_switch_timing(
     config: &MarginConfig,
     element_name: &str,
     dataframe: &DataFrame,
@@ -145,7 +145,7 @@ pub fn get_variables(filename: &str, legacy: bool) -> Result<DataFrame, PolarsEr
         Ok(result_df)
     }
 }
-pub fn variable_changer(
+fn variable_changer(
     filename: &str,
     variable_df: &DataFrame,
     variable_target_name: &str,
@@ -189,7 +189,7 @@ pub fn variable_changer(
     let return_str = re.replace_all(&file_text, &replace_str);
     String::from(return_str)
 }
-pub fn switch_timing_comparator(
+fn switch_timing_comparator(
     default_dataframe: &DataFrame,
     target_dataframe: &DataFrame,
     config: &MarginConfig,
@@ -246,7 +246,7 @@ pub fn switch_timing_comparator(
     }
     return false;
 }
-pub fn switch_timing_comparator_all(
+fn switch_timing_comparator_all(
     default_dfs: &Vec<DataFrame>,
     target_dfs: &Vec<DataFrame>,
     element_names: &Vec<&str>,
@@ -280,7 +280,7 @@ pub fn switch_timing_comparator_all(
     }
     return true;
 }
-pub fn judge(
+fn judge(
     filename: &str,
     sw_timing_dfs: &Vec<DataFrame>,
     variable_df: &DataFrame,

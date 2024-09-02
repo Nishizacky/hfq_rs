@@ -1,6 +1,6 @@
 [package]
 name = "hfq_rs"
-version = "0.0.5"
+version = "0.0.6"
 authors = ["Nishizacky"]
 edition = "2021"
 license = "MIT"
@@ -10,5 +10,6 @@ exclude = [".vscode"]
 [dependencies]
 regex = "1.10.0"
 indicatif = "0.17.8"
-polars = "0.41.3"
 chrono = "0.4.38"
+polars = { version = "0.42.0"}
+
