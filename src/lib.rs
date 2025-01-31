@@ -11,7 +11,7 @@ mod tests {
     use polars::prelude::*;
     #[test]
     fn simulation_test() {
-        let filename = "tests/xor.jsm";
+        let filename = "tests/jtl.jsm";
         print!("{:?}", simulation(filename));
     }
 
@@ -42,11 +42,12 @@ mod tests {
         let config = MarginConfig::new();
         let df = get_margines(
             filename,
-            vec!["P(3|X5|X34)", "P(3|X5|X44)", "P(3|X5|X54)", "P(3|X5|X71)"],
+            vec!["P(3|X5|X34)","P(3|X5|X44)","P(3|X5|X54)","P(3|X5|X71)"],
             config,
             true,
             8,
         );
+        println!("{:?}",df);
         println!("{}",dataframe_to_json(df))
     }
 }

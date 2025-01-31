@@ -1,0 +1,9 @@
+# configures for hfqco_rs
+
+
+[hfqco]
+ref_data_start_time= 200e-12
+ref_data_end_time= 450e-12
+pulse_error= 150e-12
+flux_type= 0
+repeat_num = 7
