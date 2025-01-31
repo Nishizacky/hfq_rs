@@ -26,35 +26,8 @@ mod tests {
     }
 
     #[test]
-    fn and() {
-        let filename = "tests/and2.jsm";
-        let config = MarginConfig::new();
-        println!(
-            "{:?}",
-            get_margines(
-                filename,
-                vec!["P(3|X5|X34)", "P(3|X5|X44)", "P(3|X5|X54)", "P(3|X5|X72)"],
-                config,
-                true,
-                1
-            )
-        );
-    }
-    #[test]
-    fn xor() {
-        let filename = "tests/xor_tane.jsm";
-        let config = MarginConfig::new();
-        let df = get_margines(
-            filename,
-            vec!["P(3|X5|X34)", "P(3|X5|X44)", "P(3|X5|X54)", "P(3|X5|X71)"],
-            config,
-            true,
-            8,
-        );
-    }
-    #[test]
     fn df_test() {
-        let data = df!("Device_name"=>&["L3","BIAS","L2","R2","SQUID2","R1","SQUID7","L1","SQUID5","SQUID6","SQUID4","SQUID3","SQUID8"],
+        let _data = df!("Device_name"=>&["L3","BIAS","L2","R2","SQUID2","R1","SQUID7","L1","SQUID5","SQUID6","SQUID4","SQUID3","SQUID8"],
                 "init"=>&[2.0,0.5,9.0,42.0,0.608,80.0,0.608,13.8,0.488,0.548,0.668,0.578,0.728],
                 "min"=>&[0.003906,0.061523,1.599609,8.449219,0.0011875,35.46875,0.0011875,5.094141,0.000953,0.00107,0.515352,0.493332,0.646953],
                 "MAX"=>&[4.0,1.0,18.0,84.0,0.966625,160.0,0.933375,25.821094,0.642406,0.687141,0.790641,0.661539,0.810469],
@@ -65,7 +38,7 @@ mod tests {
     }
     #[test]
     fn fn_test(){
-        let filename = "tests/xor_tane.jsm";
+        let filename = "tests/xor.jsm";
         let config = MarginConfig::new();
         let df = get_margines(
             filename,

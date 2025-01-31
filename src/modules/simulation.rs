@@ -45,7 +45,7 @@ pub fn simulation_with_csvfile(
         .stdout(Stdio::piped())
         .spawn()
     {
-        Err(why) => panic!("couldn't spawn josim-cli: {}", why),
+        Err(why) => panic!("couldn't spawn josim-cli: {}: {}", why,circuit_netlist),
         Ok(process) => process,
     };
 

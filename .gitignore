@@ -1,7 +1,5 @@
 /target
 /Cargo.lock
 *.txt
-*.jsm
 josim_resultCSV
-tests
 .vscode
