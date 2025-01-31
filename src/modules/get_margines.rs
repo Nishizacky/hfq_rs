@@ -22,7 +22,7 @@ pub fn get_margines(
         (target_variables.height()).try_into().unwrap(),
     ));
     pb.set_style(
-        ProgressStyle::default_bar().template("[{elapsed_precise}][{bar:40.cyan/blue}] {pos}/{len} main thread {msg}").unwrap().progress_chars("#>-"),
+        ProgressStyle::default_bar().template("[{elapsed_precise}]{spinner:.cyan}[{bar:40.cyan/blue}] {pos}/{len} main thread {msg}").unwrap().progress_chars("#>-"),
     );
     let target_variable_names = target_variables.column("Element_name").unwrap();
     let target_var_init_values = target_variables.column("default_value").unwrap();
