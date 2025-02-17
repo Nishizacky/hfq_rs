@@ -329,10 +329,9 @@ pub fn get_margine_with_progress_bar(
     let (tx_max, rx_max) = mpsc::channel();
     let (tx_min, rx_min) = mpsc::channel();
     let pbar_style = ProgressStyle::with_template(
-        "\t[{elapsed_precise}]{spinner:.red}[{bar:40.red/orange}] {pos}/{len} {msg}",
+        "\t[{elapsed_precise}][{bar:20.red}] {pos}/{len} {msg}",
     )
-    .unwrap()
-    .progress_chars("#>-");
+    .unwrap();
     thread::scope(|scope| {
         let handle_max = scope.spawn(|| {
             let mut max = initial_value * 2.0;

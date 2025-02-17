@@ -22,7 +22,7 @@ pub fn get_margines(
         (target_variables.height()).try_into().unwrap(),
     ));
     pb.set_style(
-        ProgressStyle::default_bar().template("[{elapsed_precise}]{spinner:.cyan}[{bar:40.cyan/blue}] {pos}/{len} main thread {msg}").unwrap().progress_chars("#>-"),
+        ProgressStyle::default_bar().template("[{elapsed_precise}][{bar:30.cyan/blue}] {pos}/{len} main thread {msg}").unwrap(),
     );
     let target_variable_names = target_variables.column("Element_name").unwrap();
     let target_var_init_values = target_variables.column("default_value").unwrap();
@@ -36,6 +36,7 @@ pub fn get_margines(
     let (tx, rx) = mpsc::channel();
 
     let arc_m = Arc::new(m);
+    pb.inc(0);
     thread::scope(|scope| {
         let mut handles = vec![];
         for (init_value, tar_name) in target_var_init_values.iter().zip(target_variable_names.iter())

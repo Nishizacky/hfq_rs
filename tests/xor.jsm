@@ -207,7 +207,8 @@ X52    jtl_base8            53      54      100
 X53    jtl_base8            54      55      100
 X54    jtl_base8            55      56      100
 
-Vinclk                      41      0       PWL(0ps 0mV   750ps 0mV 751ps 0.517mV 752ps 0.517mV 753ps 0mV   1250ps 0mV 1251ps 0.517mV 1252ps 0.517mV 1253ps 0mV   1750ps 0mV 1751ps 0.517mV 1752ps 0.517mV 1753ps 0mV   2250ps 0mV 2251ps 0.517mV 2252ps 0.517mV 2253ps 0mV   2750ps 0mV 2751ps 0.517mV 2752ps 0.517mV 2753ps 0mV   3250ps 0mV 3251ps 0.517mV 3252ps 0.517mV 3253ps 0mV   3750ps 0mV 3751ps 0.517mV 3752ps 0.517mV 3753ps 0mV   4250ps 0mV 4251ps 0.517mV 4252ps 0.517mV 4253ps 0mV)
+Vinclk                      41      0       pulse(0 0.517mV 750ps 1ps 1ps 1ps 500ps)
+* PWL(0ps 0mV   750ps 0mV 751ps 0.517mV 752ps 0.517mV 753ps 0mV   1250ps 0mV 1251ps 0.517mV 1252ps 0.517mV 1253ps 0mV   1750ps 0mV 1751ps 0.517mV 1752ps 0.517mV 1753ps 0mV   2250ps 0mV 2251ps 0.517mV 2252ps 0.517mV 2253ps 0mV   2750ps 0mV 2751ps 0.517mV 2752ps 0.517mV 2753ps 0mV   3250ps 0mV 3251ps 0.517mV 3252ps 0.517mV 3253ps 0mV   3750ps 0mV 3751ps 0.517mV 3752ps 0.517mV 3753ps 0mV   4250ps 0mV 4251ps 0.517mV 4252ps 0.517mV 4253ps 0mV)
 R41                         41      42                       1ohm
 X41    jtl_base8            42      43      100
 X42    jtl_base8            43      44      100
@@ -232,7 +233,7 @@ Vb2                         200     0                       pwl(0ps 0mV 100ps bi
 
 
 *** jsim input file ***
-.tran 5ps 5000ps 0ps 10ps
+.tran 0.5ps 5000ps 0ps 10ps
 
 .print phase  3|X5|X34
 .print phase  3|X5|X54
