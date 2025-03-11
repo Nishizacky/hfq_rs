@@ -13,11 +13,11 @@ pub struct MarginConfig {
     pub ref_data_start_time: f64, //最初に回路の値がどうなっているのか初期状態を取得する必要があります。これはその参考値を取得する開始時間です
     pub ref_data_end_time: f64,   //初期状態の参考値を取得する終了時間です。
     pub pulse_error: f64, //処理対象の回路についてスイッチするタイミングの誤差を指定するものです。緩すぎると明らかな異常状態を見逃すリスクが上がります。
-    pub flux_type: FlaxType,
+    pub flux_type: FluxType,
     pub rep:u64,
 }
 #[derive(Default, Clone)]
-pub enum FlaxType {
+pub enum FluxType {
     #[default]
     HFQ,
     SFQ,
@@ -28,7 +28,7 @@ impl MarginConfig {
             ref_data_start_time: 200e-12,
             ref_data_end_time: 450e-12,
             pulse_error: 150e-12,
-            flux_type: FlaxType::default(),
+            flux_type: FluxType::default(),
             rep:8
         }
     }
@@ -36,14 +36,14 @@ impl MarginConfig {
         ref_data_start_time: Option<f64>,
         ref_data_end_time: Option<f64>,
         pulse_error: Option<f64>,
-        flux_type: Option<FlaxType>,
+        flux_type: Option<FluxType>,
         rep:Option<u64>
     ) -> Self {
         Self {
             ref_data_start_time: ref_data_start_time.unwrap_or(200e-12),
             ref_data_end_time: ref_data_end_time.unwrap_or(450e-12),
             pulse_error: pulse_error.unwrap_or(150e-12),
-            flux_type: flux_type.unwrap_or(FlaxType::default()),
+            flux_type: flux_type.unwrap_or(FluxType::default()),
             rep:rep.unwrap_or(8)
         }
     }

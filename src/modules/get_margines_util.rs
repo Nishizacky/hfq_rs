@@ -5,7 +5,7 @@ use std::{fs::File, io::Read, process::exit, string::FromUtf8Error, sync::mpsc, 
 
 use crate::modules::simulation::*;
 
-use super::{FlaxType, MarginConfig, PI_RATIO};
+use super::{FluxType, MarginConfig, PI_RATIO};
 /// このファイルでは各回路パーツを変動させた場合どこまで回路が予測通りに動作するのかを検証する関数をまとめています
 /// 動作の検証は位相が変化するタイミングをあらかじめ収集してそのあとに回路パラメーターを変動させて得た位相出力がオリジナルと相違ないか計算します
 /// 位相が変化するタイミングも自動で収集するコードが格納されています。そのコードの仕様がある程度わかっていないと理解しにくい関数かもしれません
@@ -23,8 +23,8 @@ fn get_switch_timing(
     //! 指定されたインデックスのデータを読み取り、どのタイミングでスイッチしているのかを計算して判定する。その結果を新しいデータフレームで出力する
     let pi: f64 = 3.14159265358979323846264338327950288;
     let phase = match config.flux_type {
-        FlaxType::HFQ=>{pi},
-        FlaxType::SFQ=>{2.*pi}
+        FluxType::HFQ=>{pi},
+        FluxType::SFQ=>{2.*pi}
     };
     let step_value = phase * PI_RATIO;
     let uppercase_element_names = String::from(element_name.to_uppercase());
