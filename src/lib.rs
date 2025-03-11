@@ -48,6 +48,6 @@ mod tests {
             8,
         );
         println!("{:?}",df);
-        println!("{}",dataframe_to_json(df))
+        dataframe_to_json(df)
     }
 }

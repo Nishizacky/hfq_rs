@@ -1,7 +1,8 @@
 use crate::modules::*;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use polars::prelude::*;
-use std::env;
+use std::io::BufWriter;
+use std::{env, io};
 use std::sync::{mpsc, Arc};
 use std::thread;
 
@@ -109,27 +110,9 @@ pub fn get_margines(
     result_dataframe
 }
 
-pub fn dataframe_to_json(df: DataFrame) -> String {
-    //json方式にしてJSON.parseにすれば文字列のまま引き渡して処理することができる。
-    let min_per_vec = df["min%"].f64().unwrap().to_vec_null_aware().left().unwrap();
-    let min_val_vec = df["min"].f64().unwrap().to_vec_null_aware().left().unwrap();
-    let max_per_vec = df["MAX%"].f64().unwrap().to_vec_null_aware().left().unwrap();
-    let max_val_vec = df["MAX"].f64().unwrap().to_vec_null_aware().left().unwrap();
-    let init_vec = df["init"].f64().unwrap().to_vec_null_aware().left().unwrap();
-    let avg_vec = df["avg"].f64().unwrap().to_vec_null_aware().left().unwrap();
-    let range_per_vec = df["range%"].f64().unwrap().to_vec_null_aware().left().unwrap();
-    let mut name_vec = Vec::new();
-    for name in df["Device_name"].str().unwrap().iter() {
-        name_vec.push(name.unwrap());
-    }
-    let min_per_str = min_per_vec.iter().map(|s| s.to_string()).collect::<Vec<String>>().join(", ");
-    let min_val_str = min_val_vec.iter().map(|s| s.to_string()).collect::<Vec<String>>().join(", ");
-    let max_per_str = max_per_vec.iter().map(|s| s.to_string()).collect::<Vec<String>>().join(", ");
-    let max_val_str = max_val_vec.iter().map(|s| s.to_string()).collect::<Vec<String>>().join(", ");
-    let init_str = init_vec.iter().map(|s| s.to_string()).collect::<Vec<String>>().join(", ");
-    let avg_str = avg_vec.iter().map(|s| s.to_string()).collect::<Vec<String>>().join(", ");
-    let range_per_str = range_per_vec.iter().map(|s| s.to_string()).collect::<Vec<String>>().join(", ");
-    let name_str = name_vec.iter().map(|s| format!("\"{}\"", s.to_string())).collect::<Vec<String>>().join(", ");
-
-    format!("{{\"min_per\":[{min_per_str}],\"min_val\":[{min_val_str}],\"max_per\":[{max_per_str}],\"max_val\":[{max_val_str}],\"name\":[{name_str}],\"init\":[{init_str}],\"avg\":[{avg_str}],\"range_per\":[{range_per_str}]}}")
+pub fn dataframe_to_json(mut df: DataFrame){
+    let stdout=io::stdout();
+    let handle = stdout.lock();
+    let writer = BufWriter::new(handle);
+    JsonWriter::new(writer).with_json_format(JsonFormat::Json).finish(&mut df).unwrap();
 }
