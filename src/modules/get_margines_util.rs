@@ -24,7 +24,7 @@ fn get_switch_timing(
     let pi: f64 = 3.14159265358979323846264338327950288;
     let phase = match config.flux_type {
         FlaxType::HFQ=>{pi},
-        FlaxType::SQF=>{2.*pi}
+        FlaxType::SFQ=>{2.*pi}
     };
     let step_value = phase * PI_RATIO;
     let uppercase_element_names = String::from(element_name.to_uppercase());
