@@ -20,7 +20,7 @@ pub struct MarginConfig {
 pub enum FlaxType {
     #[default]
     HFQ,
-    SQF,
+    SFQ,
 }
 impl MarginConfig {
     pub fn new() -> Self {
