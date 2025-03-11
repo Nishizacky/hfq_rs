@@ -1,6 +1,6 @@
 [package]
 name = "hfq_rs"
-version = "0.0.9"
+version = "0.0.10"
 authors = ["Nishizacky"]
 edition = "2021"
 license = "MIT"
@@ -13,3 +13,7 @@ indicatif = "0.17.8"
 polars = { version = "0.42.0", features = ["json"] }
 uuid = {version = "1.15.1",features=["v4"]}
 
+[lib]
+name = "hfq_rs"
+path = "src/lib.rs"
+crate-type = ["lib","cdylib"]

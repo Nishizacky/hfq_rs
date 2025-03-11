@@ -5,7 +5,7 @@ use std::{fs::File, io::Read, process::exit, string::FromUtf8Error, sync::mpsc, 
 
 use crate::modules::simulation::*;
 
-use super::{MarginConfig, PI_RATIO};
+use super::{FlaxType, MarginConfig, PI_RATIO};
 /// このファイルでは各回路パーツを変動させた場合どこまで回路が予測通りに動作するのかを検証する関数をまとめています
 /// 動作の検証は位相が変化するタイミングをあらかじめ収集してそのあとに回路パラメーターを変動させて得た位相出力がオリジナルと相違ないか計算します
 /// 位相が変化するタイミングも自動で収集するコードが格納されています。そのコードの仕様がある程度わかっていないと理解しにくい関数かもしれません
@@ -19,11 +19,13 @@ fn get_switch_timing(
     config: &MarginConfig,
     element_name: &str,
     dataframe: &DataFrame,
-    hfq: bool, //if false,it will be sfq
 ) -> Result<DataFrame, PolarsError> {
     //! 指定されたインデックスのデータを読み取り、どのタイミングでスイッチしているのかを計算して判定する。その結果を新しいデータフレームで出力する
     let pi: f64 = 3.14159265358979323846264338327950288;
-    let phase = if hfq == true { pi } else { 2.0 * pi };
+    let phase = match config.flux_type {
+        FlaxType::HFQ=>{pi},
+        FlaxType::SQF=>{2.*pi}
+    };
     let step_value = phase * PI_RATIO;
     let uppercase_element_names = String::from(element_name.to_uppercase());
     let column_names = vec![String::from("time"), uppercase_element_names.clone()];
@@ -91,12 +93,11 @@ pub fn get_switch_timings(
     config: &MarginConfig,
     judge_element_names: &Vec<&str>,
     df: &DataFrame,
-    hfq: bool,
 ) -> Vec<DataFrame> {
     //! judge_element_namesとマージンを求めたいtargetの素子名は別物なので区別をしよう。
     let mut return_vec: Vec<DataFrame> = Vec::new();
     for &element in judge_element_names.iter() {
-        return_vec.push(match get_switch_timing(&config, element, &df, hfq) {
+        return_vec.push(match get_switch_timing(&config, element, &df) {
             Ok(result) => result,
             Err(why) => panic!("switch timing error:\n{:?}", why),
         });
@@ -287,7 +288,6 @@ fn judge(
     element_name: &str,
     config: &MarginConfig,
     judge_element_names: &Vec<&str>,
-    hfq: bool,
     replace_number: f64,
 ) -> bool {
     let sim_string = variable_changer(filename, variable_df, element_name, replace_number);
@@ -299,7 +299,7 @@ fn judge(
             return false;
         }
     }
-    let target_switch_timings = &get_switch_timings(config, judge_element_names, &result_df, hfq);
+    let target_switch_timings = &get_switch_timings(config, judge_element_names, &result_df);
     switch_timing_comparator_all(
         sw_timing_dfs,
         target_switch_timings,
@@ -317,8 +317,6 @@ pub fn get_margine_with_progress_bar(
     element_name: &str,
     config: &MarginConfig,
     judge_element_names: &Vec<&str>,
-    hfq: bool,
-    rep: usize,
     m: Arc<MultiProgress>,
 ) -> (f64, f64) {
     //!マルチスレッドで生成される関数。
@@ -332,12 +330,13 @@ pub fn get_margine_with_progress_bar(
         "\t[{elapsed_precise}][{bar:20.red}] {pos}/{len} {msg}",
     )
     .unwrap();
+    let rep = config.rep;
     thread::scope(|scope| {
         let handle_max = scope.spawn(|| {
             let mut max = initial_value * 2.0;
             let mut delta = initial_value / 2.0;
             // 変数が2倍してもシミュレーションが通ればそのまま終了。通らなかったら1/2をした値をシミュの結果に応じて足したり引いたりする。
-            let pb = m.add(ProgressBar::new(rep.try_into().unwrap()));
+            let pb = m.add(ProgressBar::new(rep));
             pb.set_style(pbar_style.clone());
             pb.set_message(format!("finding max {}", element_name));
             let mut log: Vec<&str> = vec![];
@@ -348,7 +347,6 @@ pub fn get_margine_with_progress_bar(
                 element_name,
                 config,
                 judge_element_names,
-                hfq,
                 max,
             ) {
             } else {
@@ -362,7 +360,6 @@ pub fn get_margine_with_progress_bar(
                         element_name,
                         config,
                         judge_element_names,
-                        hfq,
                         max,
                     ) {
                         max += delta;
@@ -379,7 +376,7 @@ pub fn get_margine_with_progress_bar(
             tx_max.send(max).unwrap();
         });
         let handle_min = scope.spawn(|| {
-            let pb = m.add(ProgressBar::new(rep.try_into().unwrap()));
+            let pb = m.add(ProgressBar::new(rep));
             pb.set_style(pbar_style.clone());
             pb.set_message(format!("finding min {}", element_name));
             let mut min = initial_value / 2.0;
@@ -393,7 +390,6 @@ pub fn get_margine_with_progress_bar(
                     element_name,
                     config,
                     judge_element_names,
-                    hfq,
                     min,
                 ) {
                     min -= delta;

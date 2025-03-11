@@ -21,7 +21,7 @@ mod tests {
         let config = MarginConfig::new();
         println!(
             "{:?}",
-            get_margines(filename, vec!["P(49|X_sink,48|X_sink)"], config, true, 12)
+            get_margines(filename, vec!["P(49|X_sink,48|X_sink)"], config)
         );
     }
 
@@ -44,8 +44,6 @@ mod tests {
             filename,
             vec!["P(3|X5|X34)","P(3|X5|X44)","P(3|X5|X54)","P(3|X5|X71)"],
             config,
-            true,
-            8,
         );
         println!("{:?}",df);
         dataframe_to_json(df)

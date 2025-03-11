@@ -10,8 +10,6 @@ pub fn get_margines(
     filename: &str,
     default_element_names: Vec<&str>,
     configs: MarginConfig,
-    hfq: bool,
-    rep: usize,
 ) -> DataFrame {
     //! マルチスレッドを使用します。計算時間がはやくなるけど最適化問題を解いているわけではないので出力された値は検証される必要があります
     //! そのうちD-Wave Leapとかと関連付けるかも？そうすれば最適化問題のいい感じの解を得られる。
@@ -31,7 +29,6 @@ pub fn get_margines(
         &configs,
         &default_element_names,
         &default_dataframe.clone(),
-        hfq,
     );
     let mut result_dataframe = DataFrame::empty();
     let (tx, rx) = mpsc::channel();
@@ -53,8 +50,6 @@ pub fn get_margines(
                     tar_name.to_string().as_str().into(),
                     &configs,
                     &default_element_names,
-                    hfq,
-                    rep,
                     m
                 );
                 let df_tmp = match
