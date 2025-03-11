@@ -16,11 +16,11 @@ pub struct MarginConfig {
     pub pulse_error: f64, //処理対象の回路についてスイッチするタイミングの誤差を指定するものです。緩すぎると明らかな異常状態を見逃すリスクが上がります。
     pub flux_type: FlaxType,
 }
-#[derive(Default,Clone)]
+#[derive(Default, Clone)]
 pub enum FlaxType {
     #[default]
     HFQ,
-    SQF
+    SQF,
 }
 impl MarginConfig {
     pub fn new() -> Self {
@@ -29,6 +29,19 @@ impl MarginConfig {
             ref_data_end_time: 450e-12,
             pulse_error: 150e-12,
             flux_type: FlaxType::HFQ,
+        }
+    }
+    pub fn from(
+        ref_data_start_time: Option<f64>,
+        ref_data_end_time: Option<f64>,
+        pulse_error: Option<f64>,
+        flux_type: Option<FlaxType>,
+    ) -> Self {
+        Self {
+            ref_data_start_time: ref_data_start_time.unwrap_or(200e-12),
+            ref_data_end_time: ref_data_end_time.unwrap_or(450e-12),
+            pulse_error: pulse_error.unwrap_or(150e-12),
+            flux_type: flux_type.unwrap_or(FlaxType::HFQ),
         }
     }
 }
