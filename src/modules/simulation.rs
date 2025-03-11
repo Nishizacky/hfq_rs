@@ -1,6 +1,6 @@
-use chrono::prelude::*;
 use polars::prelude::*;
 use regex::Regex;
+use uuid::Uuid;
 use std::{
     ffi::OsStr,
     fs::{self, File},
@@ -19,11 +19,8 @@ pub fn simulation_with_csvfile(
     circuit_netlist: &str,
     delete_csv: bool,
 ) -> Result<DataFrame, PolarsError> {
-    let output_fname = Local::now()
-        .format("/tmp/hfq_rs/simresult_%Y_%b%d_%H:%M:%S.csv")
-        .to_string();
-    // println!("filename is {}",output_fname);
-
+    let uuid = Uuid::new_v4().to_string();
+    let output_fname = "/tmp/hfq_rs/simresult_".to_string()+uuid.as_str();
     let arg_com: Vec<&OsStr> = if circuit_netlist.ends_with(".jsm") == true {
         vec![
             OsStr::new("-o"),

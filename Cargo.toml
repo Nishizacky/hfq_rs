@@ -10,6 +10,6 @@ exclude = [".vscode","tests","target"]
 [dependencies]
 regex = "1.10.0"
 indicatif = "0.17.8"
-chrono = "0.4.38"
 polars = { version = "0.42.0", features = ["json"] }
+uuid = {version = "1.15.1",features=["v4"]}
 

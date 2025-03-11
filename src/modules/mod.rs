@@ -1,6 +1,5 @@
 pub mod get_margines;
 pub mod get_margines_util;
-pub mod plotter;
 pub mod simulation;
 
 pub use get_margines::*;
