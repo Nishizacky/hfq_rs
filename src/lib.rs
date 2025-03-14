@@ -46,6 +46,6 @@ mod tests {
             config,
         );
         println!("{:?}",df);
-        dataframe_to_json(df)
+        println!("{}",dataframe_to_json(df))
     }
 }

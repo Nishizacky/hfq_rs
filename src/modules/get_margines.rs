@@ -1,8 +1,7 @@
 use crate::modules::*;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use polars::prelude::*;
-use std::io::BufWriter;
-use std::{env, io};
+use std::env;
 use std::sync::{mpsc, Arc};
 use std::thread;
 
@@ -105,9 +104,11 @@ pub fn get_margines(
     result_dataframe
 }
 
-pub fn dataframe_to_json(mut df: DataFrame){
-    let stdout=io::stdout();
-    let handle = stdout.lock();
-    let writer = BufWriter::new(handle);
-    JsonWriter::new(writer).with_json_format(JsonFormat::Json).finish(&mut df).unwrap();
+pub fn dataframe_to_json(mut df: DataFrame)->String{
+    let mut buffer = Vec::new();
+    JsonWriter::new(&mut buffer)
+        .with_json_format(JsonFormat::Json)
+        .finish(&mut df)
+        .unwrap();
+    String::from_utf8(buffer).unwrap()
 }
