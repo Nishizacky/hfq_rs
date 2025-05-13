@@ -102,9 +102,10 @@ pub fn get_margines(
     let average = (&((result_dataframe.column("min").unwrap()
         + result_dataframe.column("MAX").unwrap())
     .unwrap())
-        / 2)
-    .rename("avg")
-    .rechunk();
+        / 2
+        + 100.)
+        .rename("avg")
+        .rechunk();
     result_dataframe.with_column(average).unwrap();
     result_dataframe.with_column(min_par).unwrap();
     result_dataframe.with_column(max_par).unwrap();
