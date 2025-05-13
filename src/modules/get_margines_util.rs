@@ -23,8 +23,8 @@ fn get_switch_timing(
     //! 指定されたインデックスのデータを読み取り、どのタイミングでスイッチしているのかを計算して判定する。その結果を新しいデータフレームで出力する
     let pi: f64 = 3.14159265358979323846264338327950288;
     let phase = match config.flux_type {
-        FluxType::HFQ=>{pi},
-        FluxType::SFQ=>{2.*pi}
+        FluxType::HFQ => pi,
+        FluxType::SFQ => 2. * pi,
     };
     let step_value = phase * PI_RATIO;
     let uppercase_element_names = String::from(element_name.to_uppercase());
@@ -185,8 +185,10 @@ fn variable_changer(
     let replace_str_tmp = replace_number.to_string();
     let divider = caps["divider"].to_string();
     let prefix = caps["prefix"].to_string();
-    let replace_str =
-        format!("{}{}{} #!{} \n",divider,replace_str_tmp,prefix,variable_target_name);
+    let replace_str = format!(
+        "{}{}{} #!{} \n",
+        divider, replace_str_tmp, prefix, variable_target_name
+    );
     let return_str = re.replace_all(&file_text, &replace_str);
     String::from(return_str)
 }
@@ -292,7 +294,6 @@ fn judge(
 ) -> bool {
     let sim_string = variable_changer(filename, variable_df, element_name, replace_number);
     let result_df = simulation(&sim_string).unwrap();
-    //ここで-nanとなってるデータがあればこの時点でfalseを返すようにif文を作ること。
     let dtypes = result_df.dtypes();
     for dtype in dtypes {
         if dtype != DataType::Float64 {
@@ -319,17 +320,14 @@ pub fn get_margine_with_progress_bar(
     judge_element_names: &Vec<&str>,
     m: Arc<MultiProgress>,
 ) -> (f64, f64) {
-    //!マルチスレッドで生成される関数。
-    //!
     if initial_value == 0.0 {
         panic!("default_value==0.0");
     }
     let (tx_max, rx_max) = mpsc::channel();
     let (tx_min, rx_min) = mpsc::channel();
-    let pbar_style = ProgressStyle::with_template(
-        "\t[{elapsed_precise}][{bar:20.red}] {pos}/{len} {msg}",
-    )
-    .unwrap();
+    let pbar_style =
+        ProgressStyle::with_template("\t[{elapsed_precise}][{bar:20.red}] {pos}/{len} {msg}")
+            .unwrap();
     let rep = config.rep;
     thread::scope(|scope| {
         let handle_max = scope.spawn(|| {

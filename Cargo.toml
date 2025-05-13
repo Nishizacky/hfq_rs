@@ -1,19 +1,19 @@
 [package]
 name = "hfq_rs"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Nishizacky"]
 edition = "2021"
 license = "MIT"
 description = "optimized for multithreading and enhanced performance using Polars for dataframe operations, designed to analyze circuit files for josim and determine the operating margins of specified circuit elements."
 readme = "README.md"
-exclude = [".vscode","tests","target"]
+exclude = [".vscode", "tests", "target"]
 [dependencies]
 regex = "1.10.0"
 indicatif = "0.17.8"
 polars = { version = "0.42.0", features = ["json"] }
-uuid = {version = "1.15.1",features=["v4"]}
+uuid = { version = "1.15.1", features = ["v4"] }
 
 [lib]
 name = "hfq_rs"
 path = "src/lib.rs"
-crate-type = ["lib","cdylib"]
+crate-type = ["lib", "cdylib"]

@@ -20,15 +20,14 @@ pub fn get_margines(
         (target_variables.height()).try_into().unwrap(),
     ));
     pb.set_style(
-        ProgressStyle::default_bar().template("[{elapsed_precise}][{bar:30.cyan/blue}] {pos}/{len} main thread {msg}").unwrap(),
+        ProgressStyle::default_bar()
+            .template("[{elapsed_precise}][{bar:30.cyan/blue}] {pos}/{len} main thread {msg}")
+            .unwrap(),
     );
     let target_variable_names = target_variables.column("Element_name").unwrap();
     let target_var_init_values = target_variables.column("default_value").unwrap();
-    let sw_timings = get_switch_timings(
-        &configs,
-        &default_element_names,
-        &default_dataframe.clone(),
-    );
+    let sw_timings =
+        get_switch_timings(&configs, &default_element_names, &default_dataframe.clone());
     let mut result_dataframe = DataFrame::empty();
     let (tx, rx) = mpsc::channel();
 
@@ -36,7 +35,9 @@ pub fn get_margines(
     pb.inc(0);
     thread::scope(|scope| {
         let mut handles = vec![];
-        for (init_value, tar_name) in target_var_init_values.iter().zip(target_variable_names.iter())
+        for (init_value, tar_name) in target_var_init_values
+            .iter()
+            .zip(target_variable_names.iter())
         {
             let m = arc_m.clone();
             let handle = scope.spawn(|| {
@@ -72,39 +73,60 @@ pub fn get_margines(
     });
 
     for recieved in rx {
-        result_dataframe.vstack_mut(&recieved).unwrap().should_rechunk();
+        result_dataframe
+            .vstack_mut(&recieved)
+            .unwrap()
+            .should_rechunk();
         if result_dataframe.height() == target_variables.height() {
             break;
         }
     }
     let min_par = ((&(&(result_dataframe.column("min").unwrap()
-        - result_dataframe.column("init").unwrap()).unwrap()
-        / (result_dataframe.column("init").unwrap())).unwrap())
-        * 100.0).rename("min%").rechunk();
+        - result_dataframe.column("init").unwrap())
+    .unwrap()
+        / (result_dataframe.column("init").unwrap()))
+    .unwrap())
+        * 100.0
+        + 100.)
+        .rename("min%")
+        .rechunk();
     let max_par = ((&(&(result_dataframe.column("MAX").unwrap()
-        - result_dataframe.column("init").unwrap()).unwrap()
-        / result_dataframe.column("init").unwrap()).unwrap())
-        * 100.0).rename("MAX%").rechunk();
+        - result_dataframe.column("init").unwrap())
+    .unwrap()
+        / result_dataframe.column("init").unwrap())
+    .unwrap())
+        * 100.0
+        + 100.)
+        .rename("MAX%")
+        .rechunk();
     let average = (&((result_dataframe.column("min").unwrap()
-        + result_dataframe.column("MAX").unwrap()).unwrap())
-        / 2).rename("avg").rechunk();
+        + result_dataframe.column("MAX").unwrap())
+    .unwrap())
+        / 2)
+    .rename("avg")
+    .rechunk();
     result_dataframe.with_column(average).unwrap();
     result_dataframe.with_column(min_par).unwrap();
     result_dataframe.with_column(max_par).unwrap();
 
     let range = (result_dataframe.column("MAX%").unwrap()
-        - result_dataframe.column("min%").unwrap()).unwrap().rename("range%").rechunk();
+        - result_dataframe.column("min%").unwrap())
+    .unwrap()
+    .rename("range%")
+    .rechunk();
     result_dataframe.with_column(range).unwrap();
-    result_dataframe = result_dataframe.sort(
+    result_dataframe = result_dataframe
+        .sort(
             ["range%"],
             SortMultipleOptions::new().with_order_descending(true),
-        ).unwrap();
+        )
+        .unwrap();
     pb.finish_with_message("done!");
     env::set_var("POLARS_FMT_MAX_ROWS", result_dataframe.height().to_string());
     result_dataframe
 }
 
-pub fn dataframe_to_json(mut df: DataFrame)->String{
+pub fn dataframe_to_json(mut df: DataFrame) -> String {
     let mut buffer = Vec::new();
     JsonWriter::new(&mut buffer)
         .with_json_format(JsonFormat::Json)
